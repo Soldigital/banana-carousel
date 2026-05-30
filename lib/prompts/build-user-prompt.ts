@@ -24,10 +24,18 @@ export function buildUserPrompt(input: GeneratorInput): string {
       ? `\n- Creator-specified dominant colors: ${input.dominantColors.trim()} (use these to override or anchor the preset palette)`
       : "";
 
+  const brand = input.brandName?.trim() ?? "";
+  const brandBrief = brand
+    ? `\n- Brand name / handle: ${brand}`
+    : "";
+  const brandWatermark = brand
+    ? `\n- BRAND WATERMARK: Place a small, subtle brand watermark "${brand}" in a consistent corner (e.g. bottom-left) of EVERY slide's visual_prompt. It must be tasteful and unobtrusive — small, low-opacity, never covering the main subject or headline. Mention this watermark explicitly inside each slide's visual_prompt.`
+    : "";
+
   return `Generate a complete carousel structure for the following creator brief.
 
 # Creator Brief
-- Carousel title: ${input.title || "(not specified — propose one)"}
+- Carousel title: ${input.title || "(not specified — propose one)"}${brandBrief}
 - Topic / theme: ${input.topic}
 - Target audience: ${input.audience}
 - Goal of the content: ${input.goal}
@@ -41,7 +49,7 @@ export function buildUserPrompt(input: GeneratorInput): string {
 - Preset mood: ${preset.mood}
 - Preset color hints: ${preset.colorHints.join(", ")}
 - Preset visual instruction (anchor every visual_prompt to this): ${preset.visualInstruction}
-- Preset typography hint: ${preset.typographyHint}${dominantColors}${customNotes}
+- Preset typography hint: ${preset.typographyHint}${dominantColors}${customNotes}${brandWatermark}
 
 # Requirements
 1. Produce exactly ${input.slideCount} slides in the \`slides\` array.

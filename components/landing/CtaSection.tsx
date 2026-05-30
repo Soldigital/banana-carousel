@@ -20,7 +20,7 @@ export function CtaSection() {
         <div className="relative max-w-2xl mx-auto space-y-5">
           <div className="inline-flex items-center gap-2 text-xs font-bold tracking-[0.2em] text-banana">
             <Sparkles className="size-3.5" />
-            GRATIS · BYOK · NO SIGN-UP
+            PREMIUM · BYOK · NO SIGN-UP
           </div>
           <h2 className="font-display font-black text-3xl sm:text-4xl md:text-5xl leading-tight tracking-tight text-balance">
             Carousel viral berikutnya tinggal{" "}
@@ -33,7 +33,7 @@ export function CtaSection() {
           <Button asChild size="xl" className="mt-2">
             <Link href="/generate">
               <Sparkles className="size-5" />
-              Mulai Generate Gratis
+              Mulai Generate Sekarang
             </Link>
           </Button>
         </div>

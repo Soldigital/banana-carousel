@@ -63,6 +63,7 @@ export function GeneratorForm() {
       const output = await generateCarousel(
         {
           title: f.title,
+          brandName: f.brandName,
           topic: f.topic,
           audience: f.audience,
           goal: f.goal,
@@ -114,6 +115,15 @@ export function GeneratorForm() {
             />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="brandName">Nama Brand (opsional)</Label>
+            <Input
+              id="brandName"
+              placeholder="@cuan.academy"
+              value={f.brandName || ""}
+              onChange={(e) => f.setField("brandName", e.target.value)}
+            />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="goal">Tujuan Konten</Label>
             <Input
               id="goal"

@@ -7,25 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CopyButton } from "./CopyButton";
 import { SlideCard } from "./SlideCard";
+import { DownloadButtons } from "./DownloadButtons";
+import { composeAllSlides } from "@/lib/export/compose-carousel";
 import type { CarouselOutput } from "@/types/carousel";
 
 interface Props {
   output: CarouselOutput;
-}
-
-function composeAllSlides(output: CarouselOutput): string {
-  const header = `# ${output.carousel_title}\n\n## Global Style\nMood: ${output.global_style.mood}\nPalette: ${output.global_style.color_palette.join(", ")}\nTypography: ${output.global_style.typography_family}\nAspect: ${output.global_style.aspect_ratio}\nConsistency: ${output.global_style.consistency_notes}\n\n---\n\n`;
-
-  const slides = output.slides
-    .map(
-      (s) =>
-        `### Slide ${s.slide_num} — ${s.role.toUpperCase()}\n\nHEADLINE: ${s.headline}\n\nBODY: ${s.body}\n\nVISUAL PROMPT: ${s.visual_prompt}\n\nTYPOGRAPHY: ${s.typography_instruction}\n\nLAYOUT: ${s.layout_instruction}\n`,
-    )
-    .join("\n---\n\n");
-
-  const cta = `\n---\n\n## Final CTA\n${output.cta.headline}\n→ ${output.cta.action}\n`;
-
-  return header + slides + cta;
 }
 
 export function OutputViewer({ output }: Props) {
@@ -49,6 +36,7 @@ export function OutputViewer({ output }: Props) {
               {output.hook.body}
             </p>
           </div>
+          <DownloadButtons output={output} />
         </div>
       </motion.div>
 

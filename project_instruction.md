@@ -360,3 +360,74 @@ Gunakan format:
 [ISI-DISINI]
 
 Agar mudah saya isi.
+
+
+================================================
+🚀 Langkah Deployment ke Vercel
+Saya rekomendasikan Path A (GitHub + Vercel) karena: gratis, auto-deploy tiap kali Anda push, tidak perlu install CLI tambahan.
+
+Path A — GitHub + Vercel (Recommended)
+1️⃣ Buat repo di GitHub
+Buka https://github.com/new
+Repository name: banana-carousel (atau bebas)
+Visibility: Private (recommended) atau Public — keduanya OK karena tidak ada secret di repo
+JANGAN centang "Add a README", "Add .gitignore", atau "Choose a license" (sudah ada di lokal)
+Klik Create repository
+2️⃣ Push kode dari lokal ke GitHub
+GitHub akan tampilkan command — gunakan yang "push an existing repository". Di PowerShell di folder project:
+
+
+git remote add origin https://github.com/USERNAME/banana-carousel.git
+git push -u origin main
+Ganti USERNAME dengan username GitHub Anda. Git akan minta login — gunakan Personal Access Token (bukan password):
+
+Buat token di https://github.com/settings/tokens/new (scope: repo)
+Paste token saat git minta password
+Alternatif: pakai GitHub Desktop (https://desktop.github.com) — login sekali, lalu cukup klik "Publish repository".
+
+3️⃣ Deploy ke Vercel
+Buka https://vercel.com/signup → Sign up with GitHub (gratis, plan Hobby)
+Di dashboard Vercel klik Add New → Project
+Vercel akan minta install GitHub App → izinkan akses ke repo banana-carousel (boleh "All repositories" atau pilih satu repo saja)
+Klik Import di samping repo banana-carousel
+Konfigurasi otomatis terdeteksi:
+Framework Preset: Next.js ✅
+Build Command: next build ✅
+Output: .next ✅
+Install: npm install ✅
+Environment Variables: kosongkan — app pakai BYOK client-side, tidak butuh secret server
+Klik Deploy
+Tunggu 1–3 menit. Setelah selesai, Anda akan dapat URL seperti https://banana-carousel-xyz.vercel.app.
+
+4️⃣ Custom Domain (opsional)
+Di project Vercel → Settings → Domains → tambah domain Anda (mis. bananacarousel.com). Vercel kasih DNS record (CNAME) untuk di-set di registrar Anda (Niagahoster/Namecheap/Cloudflare).
+
+5️⃣ Auto-deploy setelahnya
+Tiap kali Anda git push ke main, Vercel otomatis build & deploy versi baru. Untuk feature branch, Vercel auto-buat Preview URL unik per branch — bisa test sebelum merge.
+
+Path B — Vercel CLI (alternatif, tanpa GitHub)
+Kalau tidak mau via GitHub:
+
+
+npm install -g vercel
+vercel login          # browser akan terbuka untuk login
+vercel                # ikuti prompt: link/create project, default settings
+vercel --prod         # deploy production
+Selesai. URL production langsung muncul di terminal. Tapi update selanjutnya harus manual vercel --prod tiap kali.
+
+✅ Post-Deployment Smoke Test
+Setelah live di https://*.vercel.app:
+
+Buka URL → landing harus tampil dengan hero + mockup carousel
+Klik Generate Sekarang → masuk ke /generate
+Klik Set API Key → paste Gemini API key (https://aistudio.google.com/apikey)
+Isi form sederhana → klik Generate Carousel Prompt
+Verify output muncul, tombol Copy Master Prompt bekerja
+Paste hasilnya ke https://gemini.google.com → konfirmasi prompt menghasilkan carousel
+Test mobile: buka URL di HP → form usable, copy button accessible
+Test dark/light toggle (icon sun/moon di header) → kontras readable di kedua mode
+🔒 Catatan Keamanan
+.env*.local & .vercel/ sudah di .gitignore — tidak akan ter-push walau Anda buat secret nanti.
+API key Gemini user tetap di browser mereka (encrypted AES-GCM di localStorage) — server Vercel kita tidak pernah lihat key user. Privacy by design.
+Kalau nanti pindah model ke server-side API key (mis. tier Pro di v2), simpan key di Vercel Environment Variables (Settings → Environment Variables) — JANGAN hardcode di kode.
+Kalau ada error di salah satu langkah (push ditolak, build fail di Vercel, dll), kirim screenshot/log-nya — saya bantu diagnose.

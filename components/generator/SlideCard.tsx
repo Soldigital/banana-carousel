@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ChevronDown, ChevronUp, Layout, Type, Image as ImageIcon } from "lucide-react";
 import { CopyButton } from "./CopyButton";
 import { Button } from "@/components/ui/button";
+import { composeSlidePrompt } from "@/lib/export/compose-carousel";
 import type { SlidePrompt } from "@/types/carousel";
 
 const ROLE_BADGE: Record<string, { label: string; cls: string }> = {
@@ -14,26 +15,6 @@ const ROLE_BADGE: Record<string, { label: string; cls: string }> = {
   story: { label: "STORY", cls: "bg-purple-500/15 text-purple-400" },
   cta: { label: "CTA", cls: "bg-rose-500/15 text-rose-400" },
 };
-
-function composeSlideClipboard(slide: SlidePrompt): string {
-  return `### Slide ${slide.slide_num} — ${slide.role.toUpperCase()}
-
-HEADLINE:
-${slide.headline}
-
-BODY:
-${slide.body}
-
-VISUAL PROMPT:
-${slide.visual_prompt}
-
-TYPOGRAPHY:
-${slide.typography_instruction}
-
-LAYOUT:
-${slide.layout_instruction}
-`;
-}
 
 interface Props {
   slide: SlidePrompt;
@@ -64,7 +45,7 @@ export function SlideCard({ slide, index }: Props) {
             </span>
           </div>
           <CopyButton
-            text={composeSlideClipboard(slide)}
+            text={composeSlidePrompt(slide)}
             label={`Copy Slide ${slide.slide_num}`}
             successMessage={`Slide ${slide.slide_num} tersalin!`}
           />

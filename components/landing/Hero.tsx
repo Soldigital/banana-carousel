@@ -20,7 +20,7 @@ export function Hero() {
             className="inline-flex items-center gap-2 rounded-full border border-banana/40 bg-banana/5 px-3 py-1 text-xs font-semibold"
           >
             <Sparkles className="size-3.5 text-banana" />
-            <span>Powered by Gemini AI · Gratis · BYOK</span>
+            <span>Powered by Gemini AI · Premium · BYOK</span>
           </motion.div>
 
           <motion.h1

@@ -46,6 +46,7 @@ export interface CarouselOutput {
 
 export interface GeneratorInput {
   title: string;
+  brandName?: string;
   topic: string;
   audience: string;
   goal: string;

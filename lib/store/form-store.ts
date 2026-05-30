@@ -27,6 +27,7 @@ interface FormState extends GeneratorInput {
 
 const DEFAULT_INPUT: GeneratorInput = {
   title: "",
+  brandName: "",
   topic: "",
   audience: "",
   goal: "",
@@ -65,6 +66,7 @@ export const useFormStore = create<FormState>()(
       name: "banana-carousel.form.v1",
       partialize: (s) => ({
         title: s.title,
+        brandName: s.brandName,
         topic: s.topic,
         audience: s.audience,
         goal: s.goal,

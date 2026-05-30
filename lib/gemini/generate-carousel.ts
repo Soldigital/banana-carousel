@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { jsonrepair } from "jsonrepair";
 import type { CarouselOutput, GeneratorInput } from "@/types/carousel";
 import {
   SYSTEM_PROMPT,
@@ -8,12 +9,13 @@ import { buildUserPrompt } from "@/lib/prompts/build-user-prompt";
 import {
   CarouselOutputSchema,
   GEMINI_RESPONSE_SCHEMA,
+  type CarouselOutputZ,
 } from "./schema";
 
 const MODEL_CHAIN = [
   "gemini-2.5-flash",
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
+  "gemini-2.5-flash-lite",
 ] as const;
 
 type GeminiErrorCode =
@@ -113,7 +115,7 @@ async function callGemini(
       responseSchema: GEMINI_RESPONSE_SCHEMA as any,
       temperature: 0.9,
       topP: 0.95,
-      maxOutputTokens: 8192,
+      maxOutputTokens: 16384,
     },
   });
 
@@ -127,36 +129,69 @@ async function callGemini(
   return text;
 }
 
-function parseJSON(text: string): unknown {
-  const trimmed = text.trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (fenceMatch) {
-      return JSON.parse(fenceMatch[1].trim());
-    }
-    const firstBrace = trimmed.indexOf("{");
-    const lastBrace = trimmed.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
-      return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
-    }
-    throw new GeminiError(
-      "Gemini mengembalikan JSON yang tidak valid. Coba generate ulang.",
-      "parse_error",
-    );
-  }
+function stripMarkdownFence(text: string): string {
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  return fenceMatch ? fenceMatch[1].trim() : text;
 }
 
-async function callWithModelChain(
+function parseJSON(text: string): unknown {
+  const stripped = stripMarkdownFence(text.trim());
+
+  // Layer 1: direct parse (happy path, ~99% of cases when API behaves)
+  try {
+    return JSON.parse(stripped);
+  } catch {
+    // fall through
+  }
+
+  // Layer 2: jsonrepair — handles trailing commas, smart quotes,
+  // unescaped inner quotes, missing brackets, ellipsis truncation, etc.
+  try {
+    return JSON.parse(jsonrepair(stripped));
+  } catch {
+    // fall through
+  }
+
+  // Layer 3: extract first { to last } (strip any wrapper prose), then repair
+  const firstBrace = stripped.indexOf("{");
+  const lastBrace = stripped.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    const slice = stripped.slice(firstBrace, lastBrace + 1);
+    try {
+      return JSON.parse(jsonrepair(slice));
+    } catch {
+      // fall through
+    }
+  }
+
+  throw new GeminiError(
+    "Gemini mengembalikan JSON yang tidak bisa diperbaiki bahkan setelah repair attempt.",
+    "parse_error",
+  );
+}
+
+async function callAndParseWithModelChain(
   ai: GoogleGenAI,
   userPrompt: string,
-): Promise<string> {
+): Promise<CarouselOutputZ> {
   let lastError: GeminiError | null = null;
 
   for (const model of MODEL_CHAIN) {
     try {
-      return await callGemini(ai, model, userPrompt);
+      const text = await callGemini(ai, model, userPrompt);
+      const parsed = parseJSON(text);
+      const validation = CarouselOutputSchema.safeParse(parsed);
+      if (!validation.success) {
+        throw new GeminiError(
+          `Output Gemini tidak sesuai schema: ${validation.error.issues
+            .slice(0, 3)
+            .map((i) => `${i.path.join(".")}: ${i.message}`)
+            .join("; ")}`,
+          "parse_error",
+          validation.error,
+        );
+      }
+      return validation.data;
     } catch (err) {
       const classified =
         err instanceof GeminiError ? err : classifyError(err);
@@ -166,17 +201,19 @@ async function callWithModelChain(
         throw classified;
       }
 
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(
-          `[Gemini] Model "${model}" gagal (${classified.code}):`,
-          classified.message,
-        );
-      }
+      // Always log the RAW underlying error so the exact Google message is
+      // visible in DevTools console for diagnosis (classified msg hides it).
+      console.warn(
+        `[Gemini] Model "${model}" gagal (${classified.code}):`,
+        classified.message,
+        "\nRaw error:",
+        classified.cause ?? err,
+      );
     }
   }
 
   const triedModels = MODEL_CHAIN.join(", ");
-  const lastMsg = lastError?.message ?? "";
+  const rawMsg = rawErrorMessage(lastError?.cause);
   if (lastError?.code === "rate_limit") {
     throw new GeminiError(
       `Quota Gemini Anda sudah tercapai untuk semua model yang dicoba (${triedModels}). Tunggu beberapa menit lalu coba lagi — untuk akun baru, quota free-tier biasanya reset per menit.`,
@@ -184,13 +221,36 @@ async function callWithModelChain(
       lastError.cause,
     );
   }
+  if (lastError?.code === "parse_error") {
+    throw new GeminiError(
+      `Semua model Gemini mengembalikan JSON yang tidak bisa diparse (dicoba: ${triedModels}). Coba generate ulang — biasanya berhasil di percobaan kedua.${rawMsg ? ` (detail: ${rawMsg})` : ""}`,
+      "parse_error",
+      lastError.cause,
+    );
+  }
+  if (lastError?.code === "model_not_found") {
+    throw new GeminiError(
+      `Model Gemini tidak tersedia untuk API key ini (dicoba: ${triedModels}). Pastikan: (1) API key dibuat di Google AI Studio (aistudio.google.com/apikey), BUKAN Vertex AI; (2) "Generative Language API" aktif; (3) API key tidak punya pembatasan model.${rawMsg ? ` Pesan asli Google: ${rawMsg}` : ""}`,
+      "model_not_found",
+      lastError.cause,
+    );
+  }
   throw new GeminiError(
-    `Semua model Gemini gagal dipanggil (dicoba: ${triedModels}).${
-      lastMsg ? " " + lastMsg : ""
-    }`,
+    `Semua model Gemini gagal dipanggil (dicoba: ${triedModels}).${rawMsg ? ` Pesan asli Google: ${rawMsg}` : ""}`,
     lastError?.code ?? "unknown",
     lastError?.cause,
   );
+}
+
+function rawErrorMessage(cause: unknown): string {
+  if (!cause) return "";
+  if (cause instanceof Error) return cause.message.slice(0, 300);
+  if (typeof cause === "string") return cause.slice(0, 300);
+  try {
+    return JSON.stringify(cause).slice(0, 300);
+  } catch {
+    return "";
+  }
 }
 
 export async function generateCarousel(
@@ -207,29 +267,8 @@ export async function generateCarousel(
   const ai = new GoogleGenAI({ apiKey });
   const userPrompt = buildUserPrompt(input);
 
-  const rawText = await callWithModelChain(ai, userPrompt);
+  const data = await callAndParseWithModelChain(ai, userPrompt);
 
-  let parsed: unknown;
-  try {
-    parsed = parseJSON(rawText);
-  } catch (err) {
-    if (err instanceof GeminiError) throw err;
-    throw classifyError(err);
-  }
-
-  const validation = CarouselOutputSchema.safeParse(parsed);
-  if (!validation.success) {
-    throw new GeminiError(
-      `Output Gemini tidak sesuai schema: ${validation.error.issues
-        .slice(0, 3)
-        .map((i) => `${i.path.join(".")}: ${i.message}`)
-        .join("; ")}`,
-      "parse_error",
-      validation.error,
-    );
-  }
-
-  const data = validation.data;
   if (data.slides.length > input.slideCount) {
     data.slides = data.slides.slice(0, input.slideCount);
   }
