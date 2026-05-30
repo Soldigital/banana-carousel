@@ -1,3 +1,4 @@
+import { Send } from "lucide-react";
 import { Logo } from "./Logo";
 
 export function Footer() {
@@ -11,9 +12,20 @@ export function Footer() {
           </span>
           <span className="opacity-60">· Built for Indonesian creators</span>
         </div>
-        <p className="text-xs text-center sm:text-right">
-          Powered by Gemini AI · BYOK · No data stored on our servers
-        </p>
+        <div className="flex flex-col items-center gap-2 sm:items-end">
+          <a
+            href="https://t.me/BananaCarousel"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-banana transition-colors"
+          >
+            <Send className="size-3.5" />
+            Join channel Telegram
+          </a>
+          <p className="text-xs text-center sm:text-right">
+            Powered by Gemini AI · BYOK · No data stored on our servers
+          </p>
+        </div>
       </div>
     </footer>
   );
