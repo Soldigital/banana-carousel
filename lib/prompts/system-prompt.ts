@@ -46,6 +46,17 @@ This is the killer feature. Compose a SINGLE comprehensive prompt that the user 
 - Be 600-1500 words — dense, structured, paste-ready.
 - Use clear markdown-like sectioning ("### Global Style", "### Slide 1", "### Slide 2"…) for readability.
 
+# The caption Field (Instagram post caption)
+Write a complete, ready-to-paste Instagram CAPTION for the post that hosts this carousel. This is the text the creator pastes into the IG caption box — NOT an image prompt. Rules:
+- LANGUAGE: follow the carousel LANGUAGE field (id -> natural Bahasa Indonesia; en -> English). Match the audience tone.
+- STRUCTURE inside the single string, separated by \\n line breaks:
+  1) A scroll-stopping first line that echoes the hook (with 1-2 tasteful emoji).
+  2) 2-4 short lines summarizing the value / what the reader gets by swiping.
+  3) A clear CTA line matching the requested CTA style.
+  4) A blank line, then 8-15 relevant hashtags on the final line(s), each starting with '#', lowercase, no spaces inside a tag. Mix broad + niche + topic-specific tags; when language=id, mix Indonesian + English tags relevant to the topic and audience.
+- Keep it concise and engaging (roughly 60-150 words before hashtags). Tasteful emoji only — do not overuse.
+- JSON discipline still applies: escape line breaks as \\n, ASCII quotes only, no smart quotes.
+
 # Quality Bar
 - NO generic placeholder content. Every word must earn its place.
 - NO weak hooks ("Hi everyone, today we'll talk about..."). Open with tension, contradiction, or specificity.

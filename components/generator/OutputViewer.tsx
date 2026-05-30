@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Sparkles, ExternalLink, Palette } from "lucide-react";
+import { Sparkles, ExternalLink, Palette, MessageSquareText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CopyButton } from "./CopyButton";
@@ -43,6 +43,7 @@ export function OutputViewer({ output }: Props) {
       <Tabs defaultValue="gemini" className="w-full">
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="gemini">Gemini-Ready Prompt</TabsTrigger>
+          {output.caption && <TabsTrigger value="caption">Caption IG</TabsTrigger>}
           <TabsTrigger value="slides">Per Slide ({output.slides.length})</TabsTrigger>
           <TabsTrigger value="style">Global Style</TabsTrigger>
         </TabsList>
@@ -77,6 +78,33 @@ export function OutputViewer({ output }: Props) {
             </pre>
           </div>
         </TabsContent>
+
+        {output.caption && (
+          <TabsContent value="caption" className="space-y-3">
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-border flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <MessageSquareText className="size-4 text-banana shrink-0" />
+                  <div>
+                    <p className="font-semibold">Caption Instagram — siap paste</p>
+                    <p className="text-xs text-muted-foreground">
+                      Hook + value + CTA + hashtag, sesuai bahasa carousel. Paste ke caption postingan IG Anda.
+                    </p>
+                  </div>
+                </div>
+                <CopyButton
+                  text={output.caption}
+                  label="Copy Caption"
+                  variant="default"
+                  size="default"
+                />
+              </div>
+              <pre className="p-4 sm:p-5 text-xs sm:text-sm whitespace-pre-wrap break-words max-h-[600px] overflow-y-auto leading-relaxed">
+                {output.caption}
+              </pre>
+            </div>
+          </TabsContent>
+        )}
 
         <TabsContent value="slides" className="space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap pb-1">

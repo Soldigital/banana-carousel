@@ -58,5 +58,6 @@ export function buildUserPrompt(input: GeneratorInput): string {
 4. Every visual_prompt is in ENGLISH, ultra-detailed, ready for Gemini Imagen.
 5. Headlines and body in ${input.language === "id" ? "Bahasa Indonesia" : "English"} — punchy, scroll-stopping, audience-appropriate.
 6. The \`gemini_ready_prompt\` field is the single most important deliverable — it must be a 600-1500 word, structured, paste-ready master prompt.
-7. Output ONLY the JSON object. No prose, no markdown fences.`;
+7. The \`caption\` field must be a ready-to-paste Instagram post caption in ${input.language === "id" ? "Bahasa Indonesia" : "English"}: a scroll-stopping hook line, 2-4 lines of value summary, a CTA line matching the "${input.ctaStyle}" CTA style, then a blank line followed by 8-15 relevant hashtags.
+8. Output ONLY the JSON object. No prose, no markdown fences.`;
 }

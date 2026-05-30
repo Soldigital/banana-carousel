@@ -39,6 +39,7 @@ export const CarouselOutputSchema = z.object({
   }),
   global_style: GlobalStyleSchema,
   gemini_ready_prompt: z.string().min(200),
+  caption: z.string().min(30),
 });
 
 export type CarouselOutputZ = z.infer<typeof CarouselOutputSchema>;
@@ -111,6 +112,7 @@ export const GEMINI_RESPONSE_SCHEMA = {
       ],
     },
     gemini_ready_prompt: { type: "string" },
+    caption: { type: "string" },
   },
   required: [
     "carousel_title",
@@ -119,5 +121,6 @@ export const GEMINI_RESPONSE_SCHEMA = {
     "cta",
     "global_style",
     "gemini_ready_prompt",
+    "caption",
   ],
 } as const;

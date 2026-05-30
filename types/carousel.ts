@@ -42,6 +42,7 @@ export interface CarouselOutput {
   };
   global_style: GlobalStyle;
   gemini_ready_prompt: string;
+  caption: string;
 }
 
 export interface GeneratorInput {
