@@ -5,6 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { FeatureExample } from "@/components/landing/FeatureExample";
+import { PricingSection } from "@/components/pricing/PricingSection";
 import { CtaSection } from "@/components/landing/CtaSection";
 import {
   ApiKeyModal,
@@ -21,6 +22,7 @@ export default function LandingPage() {
         <Hero />
         <HowItWorks />
         <FeatureExample />
+        <PricingSection />
         <CtaSection />
       </main>
       <Footer />

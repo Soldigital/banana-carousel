@@ -6,7 +6,7 @@ Banana Carousel adalah web app generator prompt carousel Instagram. Anda tinggal
 
 ## Highlights
 
-- **Free + BYOK** — Pakai API key Gemini gratis Anda sendiri. Tidak ada biaya, tidak perlu daftar.
+- **Lifetime access (BYOK)** — Bayar sekali Rp99.000 (normal Rp199.000), akses generator selamanya. Tetap pakai API key Gemini gratis Anda sendiri.
 - **Privacy-first** — API key dienkripsi AES-GCM di browser Anda. Server kami tidak menyimpan apapun.
 - **8 style preset** — Cinematic Luxury, Minimal Modern, Bold Typography, Soft Aesthetic, Cyberpunk Neon, Editorial Magazine, 3D Render, Hand-drawn.
 - **3–10 slide** — Slider fleksibel sesuai kebutuhan.
@@ -96,6 +96,27 @@ types/
    - Auto-corrects slide count + slide_num
 4. `CarouselOutput` rendered in 3 tabs: Master Prompt / Per Slide / Global Style
 
+## Monetisasi (iPaymu paywall)
+
+Akses `/generate` dikunci di balik lisensi **lifetime** (bayar sekali via iPaymu). Arsitektur tanpa database — lisensi adalah token HMAC yang memvalidasi dirinya sendiri.
+
+**Alur:** Landing `#pricing` → `BuyButton` (isi email) → `POST /api/checkout` → iPaymu → bayar → redirect ke `/activate` (verifikasi via `POST /api/activate`, key tampil + tersimpan) + webhook `POST /api/ipaymu/notify` (kirim key via email). Gate (`components/license/LicenseGate.tsx`) memverifikasi token ke `POST /api/license/verify`.
+
+Generate tetap berjalan **client-side** (API key Gemini user tidak pernah ke server) — paywall bersifat gate klien.
+
+### Environment Variables
+
+Copy `.env.example` → `.env.local` (lokal) dan set semua di **Vercel → Settings → Environment Variables** (production). Jangan commit `.env.local`.
+
+| Var | Catatan |
+|-----|---------|
+| `IPAYMU_VA`, `IPAYMU_API_KEY` | Kredensial iPaymu (sandbox: `sandbox.ipaymu.com/integration`, prod: `my.ipaymu.com/integration`) |
+| `IPAYMU_MODE` | `sandbox` atau `production` |
+| `LICENSE_SECRET` | String acak (mis. `openssl rand -hex 32`) — tanda tangan lisensi |
+| `OWNER_LICENSE_KEY` | Key owner rahasia — tempel di app untuk akses gratis |
+| `RESEND_API_KEY`, `LICENSE_FROM_EMAIL` | Pengiriman email lisensi (Resend; verifikasi domain) |
+| `NEXT_PUBLIC_APP_URL` | mis. `https://www.bananacarousel.click` |
+
 ## Deployment to Vercel
 
 ```powershell
@@ -103,7 +124,7 @@ npm install -g vercel
 vercel
 ```
 
-Atau push ke GitHub dan connect repo di vercel.com — auto-deploy on push.
+Atau push ke GitHub dan connect repo di vercel.com — auto-deploy on push. **Set semua Environment Variables di Vercel** lalu redeploy. Webhook iPaymu memakai URL publik (`/api/ipaymu/notify`) — tes lokal butuh tunnel (mis. ngrok) atau langsung di Vercel Preview.
 
 ## V2 Backlog (not yet implemented)
 
