@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createPayment } from "@/lib/ipaymu/client";
 import { signRef } from "@/lib/license/token";
+import { PRICE, PRODUCT_NAME } from "@/lib/config/payment";
 
 export const runtime = "nodejs";
 
-const PRICE = 99000; // Rp99.000 lifetime (normal Rp199.000)
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export async function POST(req: Request) {
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const referenceId = signRef(cleanEmail);
 
     const { url } = await createPayment({
-      product: "Banana Carousel — Lifetime Access",
+      product: PRODUCT_NAME,
       price: PRICE,
       referenceId,
       buyerName: String(name ?? "").trim() || cleanEmail.split("@")[0],

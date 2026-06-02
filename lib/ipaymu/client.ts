@@ -118,3 +118,10 @@ export function transactionReferenceId(txJson: any): string {
   const d = txJson?.Data ?? {};
   return String(d.ReferenceId ?? d.referenceId ?? "");
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function transactionAmount(txJson: any): number {
+  const d = txJson?.Data ?? {};
+  const a = Number(d.Amount ?? d.amount ?? d.Total ?? 0);
+  return Number.isFinite(a) ? a : 0;
+}

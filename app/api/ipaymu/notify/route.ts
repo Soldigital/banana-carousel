@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import {
   checkTransaction,
   isPaidTransaction,
+  transactionAmount,
   transactionReferenceId,
 } from "@/lib/ipaymu/client";
-import { issueLicense, verifyRef } from "@/lib/license/token";
+import { verifyRef } from "@/lib/license/token";
+import { grantEntitlementByEmail } from "@/lib/license/entitlement";
 import { sendLicenseEmail } from "@/lib/email/send-license";
+import { notifyTelegram } from "@/lib/telegram/notify";
+import { PRICE, formatIDR } from "@/lib/config/payment";
 
 export const runtime = "nodejs";
 
@@ -40,8 +44,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    const license = issueLicense(email);
-    await sendLicenseEmail(email, license);
+    const amount = transactionAmount(tx) || PRICE;
+    // Grant entitlement (idempotent via trx_id) and reuse the issued token as
+    // the license/access code we email.
+    const { token, duplicate } = await grantEntitlementByEmail(email, {
+      method: "ipaymu",
+      trxId,
+      amount,
+    });
+
+    if (!duplicate) {
+      await sendLicenseEmail(email, token);
+      await notifyTelegram(
+        `💰 <b>Pembayaran iPaymu BERHASIL</b>\n` +
+          `Email: <code>${email}</code>\n` +
+          `Nominal: ${formatIDR(amount)}\n` +
+          `TRX: <code>${trxId}</code>`,
+      );
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[notify]", err);
