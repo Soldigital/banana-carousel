@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { AuthProvider } from "@/components/providers/auth-provider";
 import "./globals.css";
 
 const tidioKey = process.env.NEXT_PUBLIC_TIDIO_PUBLIC_KEY;
@@ -68,13 +69,15 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          {children}
-          <Toaster
-            position="top-center"
-            theme="dark"
-            richColors
-            closeButton
-          />
+          <AuthProvider>
+            {children}
+            <Toaster
+              position="top-center"
+              theme="dark"
+              richColors
+              closeButton
+            />
+          </AuthProvider>
         </ThemeProvider>
         {tidioKey && (
           <Script src={`//code.tidio.co/${tidioKey}.js`} strategy="afterInteractive" />
