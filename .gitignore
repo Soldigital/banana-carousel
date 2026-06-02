@@ -36,3 +36,5 @@ yarn-error.log*
 
 # claude / planning artifacts (user-specific)
 .claude/
+
+.vercel

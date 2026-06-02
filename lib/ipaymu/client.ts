@@ -12,15 +12,22 @@ import crypto from "crypto";
 function config() {
   const va = process.env.IPAYMU_VA;
   const apiKey = process.env.IPAYMU_API_KEY;
-  const mode = (process.env.IPAYMU_MODE || "sandbox").toLowerCase();
+  // .trim() guards against a stray space/newline in the env value silently
+  // routing real transactions to sandbox.
+  const mode = (process.env.IPAYMU_MODE || "sandbox").trim().toLowerCase();
   if (!va || !apiKey) {
     throw new Error("IPAYMU_VA / IPAYMU_API_KEY are not set");
+  }
+  if (process.env.NODE_ENV === "production" && mode !== "production") {
+    console.warn(
+      `[ipaymu] NODE_ENV=production but IPAYMU_MODE="${mode}" — using SANDBOX. Set IPAYMU_MODE=production.`,
+    );
   }
   const base =
     mode === "production"
       ? "https://my.ipaymu.com/api/v2"
       : "https://sandbox.ipaymu.com/api/v2";
-  return { va, apiKey, base };
+  return { va, apiKey, base, mode };
 }
 
 function timestamp(): string {
@@ -69,6 +76,8 @@ export interface CreatePaymentArgs {
 export async function createPayment(
   args: CreatePaymentArgs,
 ): Promise<{ url: string; sessionId: string }> {
+  const { mode, base } = config();
+  console.info("[ipaymu] createPayment resolved", { mode, base });
   const body: Record<string, unknown> = {
     product: [args.product],
     qty: [args.qty ?? 1],
