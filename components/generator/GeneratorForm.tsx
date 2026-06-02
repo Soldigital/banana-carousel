@@ -14,7 +14,8 @@ import { useFormStore } from "@/lib/store/form-store";
 import { useUIStore } from "@/lib/store/ui-store";
 import { loadApiKey, hasApiKey } from "@/lib/storage/api-key";
 import { generateCarousel, GeminiError } from "@/lib/gemini/generate-carousel";
-import type { CtaStyle, Language } from "@/types/carousel";
+import { saveCarousel } from "@/lib/data/save-carousel";
+import type { CtaStyle, GeneratorInput, Language } from "@/types/carousel";
 
 const CTA_OPTIONS: { value: CtaStyle; label: string }[] = [
   { value: "engagement", label: "Engagement" },
@@ -60,24 +61,25 @@ export function GeneratorForm() {
         return;
       }
 
-      const output = await generateCarousel(
-        {
-          title: f.title,
-          brandName: f.brandName,
-          topic: f.topic,
-          audience: f.audience,
-          goal: f.goal,
-          stylePresetId: f.stylePresetId,
-          customStyleNotes: f.customStyleNotes,
-          dominantColors: f.dominantColors,
-          slideCount: f.slideCount,
-          language: f.language,
-          ctaStyle: f.ctaStyle,
-        },
-        apiKey,
-      );
+      const input: GeneratorInput = {
+        title: f.title,
+        brandName: f.brandName,
+        topic: f.topic,
+        audience: f.audience,
+        goal: f.goal,
+        stylePresetId: f.stylePresetId,
+        customStyleNotes: f.customStyleNotes,
+        dominantColors: f.dominantColors,
+        slideCount: f.slideCount,
+        language: f.language,
+        ctaStyle: f.ctaStyle,
+      };
+
+      const output = await generateCarousel(input, apiKey);
 
       f.setOutput(output);
+      // Save to the user's account history (best-effort, non-blocking).
+      void saveCarousel(input, output);
       toast.success("Carousel prompt siap! Scroll ke bawah untuk lihat.");
       setTimeout(() => {
         document

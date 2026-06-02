@@ -22,6 +22,7 @@ interface FormState extends GeneratorInput {
   setIsGenerating: (b: boolean) => void;
   setOutput: (o: CarouselOutput | null) => void;
   setError: (e: string | null) => void;
+  loadFromHistory: (input: GeneratorInput, output: CarouselOutput) => void;
   reset: () => void;
 }
 
@@ -54,6 +55,8 @@ export const useFormStore = create<FormState>()(
       setIsGenerating: (isGenerating) => set({ isGenerating }),
       setOutput: (output) => set({ output, error: null }),
       setError: (error) => set({ error }),
+      loadFromHistory: (input, output) =>
+        set({ ...input, output, error: null, isGenerating: false }),
       reset: () =>
         set({
           ...DEFAULT_INPUT,
