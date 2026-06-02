@@ -83,14 +83,15 @@ alter table public.profiles  enable row level security;
 alter table public.orders    enable row level security;
 alter table public.carousels enable row level security;
 
--- profiles: a user can read/update only their own row
+-- profiles: a user can READ only their own row. There is deliberately NO user
+-- UPDATE policy — otherwise a user could set their own is_pro/is_admin. All
+-- profile writes (is_pro, is_admin, whatsapp, access_code) go via service role.
 drop policy if exists profiles_select_own on public.profiles;
 create policy profiles_select_own on public.profiles
   for select using (auth.uid() = id);
 
+-- Remove the unsafe self-update policy if it was created by an earlier run.
 drop policy if exists profiles_update_own on public.profiles;
-create policy profiles_update_own on public.profiles
-  for update using (auth.uid() = id) with check (auth.uid() = id);
 
 -- orders: a user can read & insert their own; status changes only via service role
 drop policy if exists orders_select_own on public.orders;
