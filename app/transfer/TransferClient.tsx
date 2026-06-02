@@ -8,23 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CopyButton } from "@/components/generator/CopyButton";
-import { createClient } from "@/lib/supabase/client";
 import { ADMIN_WHATSAPP, BANK, PRICE, formatIDR } from "@/lib/config/payment";
 
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
 
-export function TransferClient({
-  userId,
-  email,
-  defaultWhatsapp,
-}: {
-  userId: string;
-  email: string;
-  defaultWhatsapp: string;
-}) {
-  const supabase = React.useMemo(() => createClient(), []);
+export function TransferClient() {
   const [name, setName] = React.useState("");
-  const [whatsapp, setWhatsapp] = React.useState(defaultWhatsapp);
+  const [email, setEmail] = React.useState("");
+  const [whatsapp, setWhatsapp] = React.useState("");
   const [file, setFile] = React.useState<File | null>(null);
   const [busy, setBusy] = React.useState(false);
 
@@ -44,33 +36,23 @@ export function TransferClient({
   }
 
   async function handleSubmit() {
-    if (!file) {
-      toast.error("Upload screenshot bukti transfer dulu.");
-      return;
-    }
-    if (!whatsapp.trim()) {
-      toast.error("Isi nomor WhatsApp agar admin bisa konfirmasi.");
-      return;
-    }
+    const cleanEmail = email.trim().toLowerCase();
+    if (!name.trim()) return toast.error("Isi nama Anda.");
+    if (!EMAIL_RE.test(cleanEmail))
+      return toast.error("Masukkan email yang valid — akun & kode akses dikirim ke sini.");
+    if (!whatsapp.trim())
+      return toast.error("Isi nomor WhatsApp agar admin bisa konfirmasi.");
+    if (!file) return toast.error("Upload screenshot bukti transfer dulu.");
+
     setBusy(true);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+      const fd = new FormData();
+      fd.append("name", name.trim());
+      fd.append("email", cleanEmail);
+      fd.append("whatsapp", whatsapp.trim());
+      fd.append("proof", file);
 
-      const { error: upErr } = await supabase.storage
-        .from("transfer-proofs")
-        .upload(path, file, { upsert: false, contentType: file.type });
-      if (upErr) throw new Error(upErr.message);
-
-      const res = await fetch("/api/manual-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          whatsapp: whatsapp.trim(),
-          proofPath: path,
-        }),
-      });
+      const res = await fetch("/api/manual-order", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok || !data.orderId) {
         throw new Error(data.error || "Gagal mengirim pesanan.");
@@ -82,8 +64,8 @@ export function TransferClient({
         `Halo Admin Banana Carousel 🍌\n` +
           `Saya sudah transfer manual & upload bukti.\n` +
           `Order ID: ${data.orderId}\n` +
-          `Nama: ${name.trim() || "-"}\n` +
-          `Email: ${email}\n` +
+          `Nama: ${name.trim()}\n` +
+          `Email: ${cleanEmail}\n` +
           `Nominal: ${formatIDR(PRICE)}\n` +
           `Mohon diverifikasi ya. Terima kasih!`,
       );
@@ -91,7 +73,7 @@ export function TransferClient({
       if (ADMIN_WHATSAPP) {
         window.location.href = `https://wa.me/${ADMIN_WHATSAPP}?text=${text}`;
       } else {
-        window.location.href = "/dashboard";
+        window.location.href = "/login?redirect=/dashboard";
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal mengirim.");
@@ -112,8 +94,8 @@ export function TransferClient({
           <span className="font-semibold text-foreground">
             {formatIDR(PRICE)}
           </span>{" "}
-          ke rekening di bawah, upload bukti, lalu admin akan verifikasi &
-          mengaktifkan akses Anda.
+          ke rekening di bawah, upload bukti, lalu admin verifikasi &
+          mengaktifkan akses Anda. Akun otomatis dibuat dari email Anda.
         </p>
       </div>
 
@@ -163,7 +145,14 @@ export function TransferClient({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="t-email">Email</Label>
-          <Input id="t-email" value={email} disabled readOnly />
+          <Input
+            id="t-email"
+            type="email"
+            inputMode="email"
+            placeholder="kamu@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="t-wa">No. WhatsApp</Label>
@@ -215,8 +204,8 @@ export function TransferClient({
           )}
         </Button>
         <p className="text-center text-xs text-muted-foreground">
-          Setelah dikirim, Anda diarahkan ke WhatsApp admin. Akses aktif setelah
-          admin verifikasi (kode akses muncul di dashboard & dikirim ke email).
+          Setelah diverifikasi admin, akses aktif & kode akses dikirim ke email
+          Anda. Masuk ke dashboard kapan saja via Magic Link di halaman Masuk.
         </p>
       </div>
     </motion.div>

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Loader2, LogIn, Mail, UserPlus } from "lucide-react";
+import { Loader2, LogIn, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,33 +64,6 @@ export function LoginClient() {
     }
   }
 
-  async function handleSignUp() {
-    const clean = validEmail();
-    if (!clean || !supabase) return;
-    if (password.length < 6)
-      return toast.error("Password minimal 6 karakter.");
-    setBusy(true);
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: clean,
-        password,
-        options: { emailRedirectTo: callbackUrl },
-      });
-      if (error) throw error;
-      if (data.session) {
-        toast.success("Akun dibuat. Selamat datang!");
-        router.push(redirectTo);
-        router.refresh();
-      } else {
-        toast.success("Cek email Anda untuk konfirmasi pendaftaran.");
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal mendaftar.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handleMagicLink() {
     const clean = validEmail();
     if (!clean || !supabase) return;
@@ -131,9 +104,8 @@ export function LoginClient() {
       </p>
 
       <Tabs defaultValue="signin" className="mt-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="signin">Masuk</TabsTrigger>
-          <TabsTrigger value="signup">Daftar</TabsTrigger>
           <TabsTrigger value="magic">Magic Link</TabsTrigger>
         </TabsList>
 
@@ -167,25 +139,6 @@ export function LoginClient() {
             <Button className="w-full" onClick={handleSignIn} disabled={busy}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
               Masuk
-            </Button>
-          </TabsContent>
-
-          <TabsContent value="signup" className="mt-0 space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="signup-password">Password (min. 6 karakter)</Label>
-              <Input
-                id="signup-password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                onKeyDown={(e) => e.key === "Enter" && handleSignUp()}
-              />
-            </div>
-            <Button className="w-full" onClick={handleSignUp} disabled={busy}>
-              {busy ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
-              Buat Akun
             </Button>
           </TabsContent>
 

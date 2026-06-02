@@ -7,6 +7,7 @@ import {
 } from "@/lib/ipaymu/client";
 import { verifyRef } from "@/lib/license/token";
 import { grantEntitlementByEmail } from "@/lib/license/entitlement";
+import { ensureAccountForEmail } from "@/lib/auth/account";
 import { sendLicenseEmail } from "@/lib/email/send-license";
 import { notifyTelegram } from "@/lib/telegram/notify";
 import { PRICE, formatIDR } from "@/lib/config/payment";
@@ -45,6 +46,12 @@ export async function POST(req: Request) {
     }
 
     const amount = transactionAmount(tx) || PRICE;
+    // Beli = Daftar: make sure the buyer has an account (idempotent).
+    try {
+      await ensureAccountForEmail(email);
+    } catch (e) {
+      console.error("[notify] ensureAccount failed (non-fatal)", e);
+    }
     // Grant entitlement (idempotent via trx_id) and reuse the issued token as
     // the license/access code we email.
     const { token, duplicate } = await grantEntitlementByEmail(email, {
