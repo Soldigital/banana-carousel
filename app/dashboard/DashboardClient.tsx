@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CopyButton } from "@/components/generator/CopyButton";
 import { BuyButton } from "@/components/pricing/BuyButton";
+import { TutorialSection } from "@/components/dashboard/TutorialSection";
 import { useFormStore } from "@/lib/store/form-store";
 import type { EntitlementStatus } from "@/lib/license/status";
 import type { CarouselRecord } from "@/types/db";
@@ -120,11 +121,17 @@ export function DashboardClient({
         )}
       </section>
 
+      {/* Tutorial */}
+      <TutorialSection />
+
       {/* Carousel history */}
       <section>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold">
-            Riwayat Carousel
+            Riwayat Carousel{" "}
+            <span className="text-sm font-normal text-muted-foreground">
+              (30 hari terakhir)
+            </span>
           </h2>
           <span className="text-xs text-muted-foreground">
             {carousels.length} tersimpan
