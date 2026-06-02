@@ -5,6 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { FeatureExample } from "@/components/landing/FeatureExample";
+import { ExampleGallery } from "@/components/landing/ExampleGallery";
 import { PricingSection } from "@/components/pricing/PricingSection";
 import { CtaSection } from "@/components/landing/CtaSection";
 import {
@@ -22,6 +23,7 @@ export default function LandingPage() {
         <Hero />
         <HowItWorks />
         <FeatureExample />
+        <ExampleGallery />
         <PricingSection />
         <CtaSection />
       </main>

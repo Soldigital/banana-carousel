@@ -34,6 +34,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# raw (uncompressed) source images — only the compressed public/ output is committed
+assets-raw/
+
 # claude / planning artifacts (user-specific)
 .claude/
 
