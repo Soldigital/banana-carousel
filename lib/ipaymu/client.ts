@@ -68,6 +68,7 @@ export interface CreatePaymentArgs {
   referenceId: string;
   buyerName?: string;
   buyerEmail?: string;
+  buyerPhone?: string;
   returnUrl: string;
   notifyUrl: string;
   cancelUrl: string;
@@ -89,6 +90,7 @@ export async function createPayment(
   };
   if (args.buyerName) body.buyerName = args.buyerName;
   if (args.buyerEmail) body.buyerEmail = args.buyerEmail;
+  if (args.buyerPhone) body.buyerPhone = args.buyerPhone;
 
   const json = await ipaymuPost("/payment", body);
   if (!json || Number(json.Status) !== 200 || !json.Data?.Url) {

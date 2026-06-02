@@ -9,7 +9,7 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export async function POST(req: Request) {
   try {
-    const { email, name } = await req.json();
+    const { email, name, whatsapp } = await req.json();
     const cleanEmail = String(email ?? "").trim().toLowerCase();
     if (!EMAIL_RE.test(cleanEmail)) {
       return NextResponse.json({ error: "Email tidak valid." }, { status: 400 });
@@ -24,6 +24,7 @@ export async function POST(req: Request) {
       referenceId,
       buyerName: String(name ?? "").trim() || cleanEmail.split("@")[0],
       buyerEmail: cleanEmail,
+      buyerPhone: String(whatsapp ?? "").trim() || undefined,
       returnUrl: `${appUrl}/activate`,
       notifyUrl: `${appUrl}/api/ipaymu/notify`,
       cancelUrl: `${appUrl}/?canceled=1`,

@@ -28,6 +28,7 @@ export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
+  const [whatsapp, setWhatsapp] = React.useState("");
   const [busy, setBusy] = React.useState(false);
 
   async function handleCheckout() {
@@ -41,7 +42,11 @@ export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: clean, name: name.trim() }),
+        body: JSON.stringify({
+          email: clean,
+          name: name.trim(),
+          whatsapp: whatsapp.trim(),
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) {
@@ -97,6 +102,17 @@ export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
                 placeholder="Nama kamu"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="buyer-wa">No. WhatsApp (opsional)</Label>
+              <Input
+                id="buyer-wa"
+                type="tel"
+                inputMode="tel"
+                placeholder="0812xxxxxxxx"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
               />
             </div>
             <p className="text-xs text-muted-foreground">
