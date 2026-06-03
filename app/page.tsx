@@ -8,17 +8,11 @@ import { FeatureExample } from "@/components/landing/FeatureExample";
 import { ExampleGallery } from "@/components/landing/ExampleGallery";
 import { PricingSection } from "@/components/pricing/PricingSection";
 import { CtaSection } from "@/components/landing/CtaSection";
-import {
-  ApiKeyModal,
-  useApiKeyHydration,
-} from "@/components/api-key/ApiKeyModal";
 
 export default function LandingPage() {
-  useApiKeyHydration();
-
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header showApiKey={false} />
       <main className="flex-1">
         <Hero />
         <HowItWorks />
@@ -28,7 +22,6 @@ export default function LandingPage() {
         <CtaSection />
       </main>
       <Footer />
-      <ApiKeyModal />
     </div>
   );
 }

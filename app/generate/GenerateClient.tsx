@@ -26,7 +26,7 @@ export function GenerateClient({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header showApiKey={false} />
       <main className="flex-1 container max-w-3xl py-6 sm:py-10 space-y-6">
         <AnnouncementBanner announcement={announcement} />
         <LicenseGate>
