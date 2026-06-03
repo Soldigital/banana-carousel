@@ -20,6 +20,7 @@ import { BuyButton } from "@/components/pricing/BuyButton";
 import { TutorialSection } from "@/components/dashboard/TutorialSection";
 import { useFormStore } from "@/lib/store/form-store";
 import type { EntitlementStatus } from "@/lib/license/status";
+import type { TutorialConfig } from "@/lib/data/settings";
 import type { CarouselRecord } from "@/types/db";
 
 function formatDate(iso: string): string {
@@ -39,9 +40,11 @@ function formatDate(iso: string): string {
 export function DashboardClient({
   status,
   carousels,
+  tutorial,
 }: {
   status: EntitlementStatus;
   carousels: CarouselRecord[];
+  tutorial: TutorialConfig;
 }) {
   const router = useRouter();
   const loadFromHistory = useFormStore((s) => s.loadFromHistory);
@@ -122,7 +125,7 @@ export function DashboardClient({
       </section>
 
       {/* Tutorial */}
-      <TutorialSection />
+      <TutorialSection youtubeId={tutorial.youtubeId} steps={tutorial.steps} />
 
       {/* Carousel history */}
       <section>

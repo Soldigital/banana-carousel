@@ -6,6 +6,8 @@ import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { reconcileOnLogin } from "@/lib/license/entitlement";
 import { getEntitlement } from "@/lib/license/status";
 import { listCarousels } from "@/lib/data/carousels";
+import { getTutorial, getAnnouncement } from "@/lib/data/settings";
+import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import { DashboardClient } from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -22,16 +24,23 @@ export default async function DashboardPage() {
   // Pick up any payment made before this account existed.
   await reconcileOnLogin(user.id, user.email ?? "");
 
-  const [status, carousels] = await Promise.all([
+  const [status, carousels, tutorial, announcement] = await Promise.all([
     getEntitlement(),
     listCarousels(),
+    getTutorial(),
+    getAnnouncement(),
   ]);
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header showApiKey={false} />
-      <main className="flex-1 container py-10 sm:py-14">
-        <DashboardClient status={status} carousels={carousels} />
+      <main className="flex-1 container py-10 sm:py-14 space-y-6">
+        <AnnouncementBanner announcement={announcement} />
+        <DashboardClient
+          status={status}
+          carousels={carousels}
+          tutorial={tutorial}
+        />
       </main>
       <Footer />
     </div>

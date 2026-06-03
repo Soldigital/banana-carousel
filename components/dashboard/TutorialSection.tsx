@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import { ChevronDown, GraduationCap, PlayCircle } from "lucide-react";
-import { TUTORIAL_STEPS, TUTORIAL_YOUTUBE_ID } from "@/lib/config/tutorial";
+import {
+  TUTORIAL_STEPS,
+  TUTORIAL_YOUTUBE_ID,
+  type TutorialStep,
+} from "@/lib/config/tutorial";
 
 function TutorialStepItem({
   step,
@@ -36,7 +40,13 @@ function TutorialStepItem({
   );
 }
 
-export function TutorialSection() {
+export function TutorialSection({
+  youtubeId = TUTORIAL_YOUTUBE_ID,
+  steps = TUTORIAL_STEPS,
+}: {
+  youtubeId?: string;
+  steps?: TutorialStep[];
+} = {}) {
   return (
     <section className="rounded-2xl border border-border bg-card/40 p-6">
       <div className="flex items-center gap-2 mb-4">
@@ -46,11 +56,11 @@ export function TutorialSection() {
 
       {/* Video */}
       <div className="mb-6">
-        {TUTORIAL_YOUTUBE_ID ? (
+        {youtubeId ? (
           <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border">
             <iframe
               className="h-full w-full"
-              src={`https://www.youtube.com/embed/${TUTORIAL_YOUTUBE_ID}`}
+              src={`https://www.youtube.com/embed/${youtubeId}`}
               title="Tutorial Banana Carousel"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
@@ -70,7 +80,7 @@ export function TutorialSection() {
         <p className="mb-1 text-xs font-bold tracking-wider text-muted-foreground">
           PANDUAN LANGKAH DEMI LANGKAH
         </p>
-        {TUTORIAL_STEPS.map((step, i) => (
+        {steps.map((step, i) => (
           <TutorialStepItem key={i} step={step} index={i} />
         ))}
       </div>

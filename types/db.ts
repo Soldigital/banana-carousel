@@ -4,7 +4,7 @@
 
 import type { CarouselOutput, GeneratorInput } from "./carousel";
 
-export type OrderMethod = "ipaymu" | "manual";
+export type OrderMethod = "ipaymu" | "manual" | "promo";
 export type OrderStatus = "pending" | "paid" | "approved" | "rejected";
 
 export interface Profile {

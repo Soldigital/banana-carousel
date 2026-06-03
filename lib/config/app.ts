@@ -6,13 +6,16 @@ export function normalizeEmail(email: string | null | undefined): string {
   return String(email ?? "").trim().toLowerCase();
 }
 
-// Owner email (server env). Used to auto-promote the owner to admin and as an
-// always-entitled fast-path. Empty string when unset.
-export function ownerEmail(): string {
-  return normalizeEmail(process.env.OWNER_EMAIL);
+// Owner / super-admin emails (server env). Comma-separated list in OWNER_EMAIL.
+// Used to auto-promote to admin and as an always-entitled fast-path.
+export function ownerEmails(): string[] {
+  return String(process.env.OWNER_EMAIL ?? "")
+    .split(",")
+    .map((e) => normalizeEmail(e))
+    .filter(Boolean);
 }
 
 export function isOwnerEmail(email: string | null | undefined): boolean {
-  const owner = ownerEmail();
-  return !!owner && normalizeEmail(email) === owner;
+  const e = normalizeEmail(email);
+  return !!e && ownerEmails().includes(e);
 }

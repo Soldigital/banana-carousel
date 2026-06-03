@@ -10,9 +10,17 @@ import {
   useApiKeyHydration,
 } from "@/components/api-key/ApiKeyModal";
 import { LicenseGate } from "@/components/license/LicenseGate";
+import {
+  AnnouncementBanner,
+  type BannerAnnouncement,
+} from "@/components/AnnouncementBanner";
 import { useFormStore } from "@/lib/store/form-store";
 
-export function GenerateClient() {
+export function GenerateClient({
+  announcement = null,
+}: {
+  announcement?: BannerAnnouncement | null;
+}) {
   useApiKeyHydration();
   const output = useFormStore((s) => s.output);
 
@@ -20,6 +28,7 @@ export function GenerateClient() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 container max-w-3xl py-6 sm:py-10 space-y-6">
+        <AnnouncementBanner announcement={announcement} />
         <LicenseGate>
           <div className="space-y-2">
             <p className="text-xs font-bold tracking-[0.2em] text-banana">
