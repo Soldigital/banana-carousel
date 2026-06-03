@@ -32,10 +32,18 @@ export function LoginClient() {
   const [forgot, setForgot] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
 
-  const callbackUrl = React.useMemo(() => {
-    if (typeof window === "undefined") return "";
-    return `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`;
-  }, [redirectTo]);
+  // Always build auth links against the production app URL (deterministic),
+  // falling back to the current origin for local dev.
+  const appBase = React.useMemo(() => {
+    if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+    if (typeof window !== "undefined") return window.location.origin;
+    return "";
+  }, []);
+
+  const callbackUrl = React.useMemo(
+    () => `${appBase}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
+    [appBase, redirectTo],
+  );
 
   function validEmail() {
     const clean = normalizeEmail(email);
@@ -73,7 +81,7 @@ export function LoginClient() {
     setBusy(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(clean, {
-        redirectTo: `${window.location.origin}/auth/callback?redirect=/reset-password`,
+        redirectTo: `${appBase}/auth/callback?redirect=/reset-password`,
       });
       if (error) throw error;
       toast.success("Link reset password dikirim ke email Anda.");
