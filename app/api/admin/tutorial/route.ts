@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminUser } from "@/lib/auth/admin";
+import { getSuperAdminUser } from "@/lib/auth/admin";
 import { setSetting } from "@/lib/data/settings";
 
 export const runtime = "nodejs";
@@ -10,7 +10,7 @@ interface RawStep {
 }
 
 export async function POST(req: Request) {
-  const admin = await getAdminUser();
+  const admin = await getSuperAdminUser();
   if (!admin) return NextResponse.json({ error: "Bukan admin." }, { status: 403 });
 
   try {

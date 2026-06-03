@@ -39,12 +39,12 @@ export async function ensureAccountForEmail(
     userId = profile?.id ?? null;
   }
 
-  // Persist WhatsApp on the profile (best-effort).
-  if (opts.whatsapp && userId) {
-    await admin
-      .from("profiles")
-      .update({ whatsapp: opts.whatsapp })
-      .eq("id", userId);
+  // Persist name / WhatsApp on the profile (best-effort).
+  if (userId && (opts.whatsapp || opts.name)) {
+    const patch: { whatsapp?: string; name?: string } = {};
+    if (opts.whatsapp) patch.whatsapp = opts.whatsapp;
+    if (opts.name) patch.name = opts.name;
+    await admin.from("profiles").update(patch).eq("id", userId);
   }
 
   return userId;

@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { getAdminUser } from "@/lib/auth/admin";
+import { isOwnerEmail } from "@/lib/config/app";
 import { listPendingManualOrders } from "@/lib/data/admin-orders";
 import { listUsers, getStats, salesSeries } from "@/lib/data/admin-stats";
 import { getTutorial, getAnnouncementRaw } from "@/lib/data/settings";
@@ -15,6 +16,7 @@ export default async function AdminPage() {
 
   const admin = await getAdminUser();
   if (!admin) redirect("/");
+  const isSuper = isOwnerEmail(admin.email);
 
   const [orders, users, stats, sales, tutorial, announcement] = await Promise.all([
     listPendingManualOrders(),
@@ -30,6 +32,7 @@ export default async function AdminPage() {
       <Header showApiKey={false} />
       <main className="flex-1 container py-10 sm:py-14">
         <AdminClient
+          isSuper={isSuper}
           stats={stats}
           sales={sales}
           users={users}

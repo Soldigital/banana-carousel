@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Loader2, LogIn, Mail } from "lucide-react";
 import { toast } from "sonner";
@@ -16,7 +16,6 @@ import { normalizeEmail } from "@/lib/config/app";
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export function LoginClient() {
-  const router = useRouter();
   const params = useSearchParams();
   const redirectTo = params.get("redirect") || "/dashboard";
   const configured = hasSupabaseEnv();
@@ -55,8 +54,9 @@ export function LoginClient() {
       });
       if (error) throw error;
       toast.success("Berhasil masuk.");
-      router.push(redirectTo);
-      router.refresh();
+      // Full navigation so the new session cookie is read server-side.
+      window.location.assign(redirectTo);
+      return;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal masuk.");
     } finally {

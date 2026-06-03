@@ -4,10 +4,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export interface AdminUser {
   id: string;
   email: string;
+  name: string | null;
   whatsapp: string | null;
   is_pro: boolean;
   banned: boolean;
   is_admin: boolean;
+  role: "user" | "supervisor";
   access_code: string | null;
   created_at: string;
 }
@@ -16,7 +18,9 @@ export async function listUsers(limit = 500): Promise<AdminUser[]> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("profiles")
-    .select("id,email,whatsapp,is_pro,banned,is_admin,access_code,created_at")
+    .select(
+      "id,email,name,whatsapp,is_pro,banned,is_admin,role,access_code,created_at",
+    )
     .order("created_at", { ascending: false })
     .limit(limit);
   return (data as AdminUser[]) ?? [];

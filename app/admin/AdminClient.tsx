@@ -11,6 +11,7 @@ import {
   Mail,
   Megaphone,
   MessageCircle,
+  Pencil,
   Plus,
   ShieldAlert,
   ShieldCheck,
@@ -57,6 +58,7 @@ function fmtDate(iso: string): string {
 }
 
 export function AdminClient({
+  isSuper,
   stats,
   sales,
   users,
@@ -64,6 +66,7 @@ export function AdminClient({
   tutorial,
   announcement,
 }: {
+  isSuper: boolean;
   stats: AdminStats;
   sales: SalesSeries;
   users: AdminUser[];
@@ -73,13 +76,24 @@ export function AdminClient({
 }) {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <h1 className="font-display text-3xl font-bold">Super Admin</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="font-display text-3xl font-bold">
+          {isSuper ? "Super Admin" : "Admin"}
+        </h1>
+        {!isSuper && (
+          <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-xs font-semibold text-purple-400">
+            Supervisor
+          </span>
+        )}
+      </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue={isSuper ? "overview" : "users"}>
         <TabsList className="flex flex-wrap">
-          <TabsTrigger value="overview">
-            <BarChart3 className="size-4" /> Ringkasan
-          </TabsTrigger>
+          {isSuper && (
+            <TabsTrigger value="overview">
+              <BarChart3 className="size-4" /> Ringkasan
+            </TabsTrigger>
+          )}
           <TabsTrigger value="users">
             <Users className="size-4" /> User
           </TabsTrigger>
@@ -91,33 +105,43 @@ export function AdminClient({
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="add">
-            <Plus className="size-4" /> Tambah User
-          </TabsTrigger>
-          <TabsTrigger value="announce">
-            <Megaphone className="size-4" /> Pengumuman
-          </TabsTrigger>
-          <TabsTrigger value="tutorial">Tutorial</TabsTrigger>
+          {isSuper && (
+            <>
+              <TabsTrigger value="add">
+                <Plus className="size-4" /> Tambah User
+              </TabsTrigger>
+              <TabsTrigger value="announce">
+                <Megaphone className="size-4" /> Pengumuman
+              </TabsTrigger>
+              <TabsTrigger value="tutorial">Tutorial</TabsTrigger>
+            </>
+          )}
         </TabsList>
 
-        <TabsContent value="overview">
-          <Overview stats={stats} sales={sales} />
-        </TabsContent>
+        {isSuper && (
+          <TabsContent value="overview">
+            <Overview stats={stats} sales={sales} />
+          </TabsContent>
+        )}
         <TabsContent value="users">
-          <UsersTab users={users} />
+          <UsersTab users={users} isSuper={isSuper} />
         </TabsContent>
         <TabsContent value="approval">
           <ApprovalTab orders={orders} />
         </TabsContent>
-        <TabsContent value="add">
-          <AddUserTab />
-        </TabsContent>
-        <TabsContent value="announce">
-          <AnnouncementTab current={announcement} />
-        </TabsContent>
-        <TabsContent value="tutorial">
-          <TutorialTab current={tutorial} />
-        </TabsContent>
+        {isSuper && (
+          <>
+            <TabsContent value="add">
+              <AddUserTab />
+            </TabsContent>
+            <TabsContent value="announce">
+              <AnnouncementTab current={announcement} />
+            </TabsContent>
+            <TabsContent value="tutorial">
+              <TutorialTab current={tutorial} />
+            </TabsContent>
+          </>
+        )}
       </Tabs>
     </div>
   );
@@ -171,17 +195,45 @@ function Overview({ stats, sales }: { stats: AdminStats; sales: SalesSeries }) {
 }
 
 /* ------------------------------- Users ------------------------------- */
-function UsersTab({ users }: { users: AdminUser[] }) {
+function UsersTab({
+  users,
+  isSuper,
+}: {
+  users: AdminUser[];
+  isSuper: boolean;
+}) {
   const router = useRouter();
   const [q, setQ] = React.useState("");
   const [emailFor, setEmailFor] = React.useState<AdminUser | null>(null);
+  const [waFor, setWaFor] = React.useState<AdminUser | null>(null);
+  const [editFor, setEditFor] = React.useState<AdminUser | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
 
   const filtered = users.filter(
     (u) =>
       u.email.toLowerCase().includes(q.toLowerCase()) ||
+      (u.name ?? "").toLowerCase().includes(q.toLowerCase()) ||
       (u.whatsapp ?? "").includes(q),
   );
+
+  async function setRole(u: AdminUser, role: "user" | "supervisor") {
+    if (!confirm(`Ubah role ${u.email} menjadi ${role}?`)) return;
+    setBusyId(u.id + ":role");
+    try {
+      const res = await fetch("/api/admin/role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: u.id, role }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Role diperbarui.");
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function resend(u: AdminUser) {
     setBusyId(u.id + ":resend");
@@ -231,7 +283,6 @@ function UsersTab({ users }: { users: AdminUser[] }) {
 
       <div className="space-y-2">
         {filtered.map((u) => {
-          const wa = waLink(u.whatsapp);
           return (
             <div
               key={u.id}
@@ -239,15 +290,16 @@ function UsersTab({ users }: { users: AdminUser[] }) {
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">{u.email}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {u.whatsapp || "tanpa WA"} · daftar {fmtDate(u.created_at)}
+                  <p className="truncate font-semibold">{u.name || u.email}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {u.name ? `${u.email} · ` : ""}
+                    {u.whatsapp || "tanpa WA"} · {fmtDate(u.created_at)}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {u.is_admin && (
+                  {u.role === "supervisor" && (
                     <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-semibold text-purple-400">
-                      Admin
+                      Supervisor
                     </span>
                   )}
                   {u.banned ? (
@@ -292,28 +344,46 @@ function UsersTab({ users }: { users: AdminUser[] }) {
                 <Button size="sm" variant="outline" onClick={() => setEmailFor(u)}>
                   <Mail className="size-3.5" /> Email
                 </Button>
-                {wa && (
-                  <Button asChild size="sm" variant="outline">
-                    <a href={wa} target="_blank" rel="noopener noreferrer">
-                      <MessageCircle className="size-3.5" /> WhatsApp
-                    </a>
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant={u.banned ? "outline" : "destructive"}
-                  onClick={() => toggleBan(u)}
-                  disabled={busyId === u.id + ":ban"}
-                >
-                  {busyId === u.id + ":ban" ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : u.banned ? (
-                    <ShieldCheck className="size-3.5" />
-                  ) : (
-                    <ShieldAlert className="size-3.5" />
-                  )}
-                  {u.banned ? "Aktifkan" : "Ban"}
+                <Button size="sm" variant="outline" onClick={() => setWaFor(u)}>
+                  <MessageCircle className="size-3.5" /> WhatsApp
                 </Button>
+                {isSuper && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEditFor(u)}
+                    >
+                      <Pencil className="size-3.5" /> Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={u.banned ? "outline" : "destructive"}
+                      onClick={() => toggleBan(u)}
+                      disabled={busyId === u.id + ":ban"}
+                    >
+                      {busyId === u.id + ":ban" ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : u.banned ? (
+                        <ShieldCheck className="size-3.5" />
+                      ) : (
+                        <ShieldAlert className="size-3.5" />
+                      )}
+                      {u.banned ? "Aktifkan" : "Ban"}
+                    </Button>
+                    <select
+                      value={u.role}
+                      disabled={busyId === u.id + ":role"}
+                      onChange={(e) =>
+                        setRole(u, e.target.value as "user" | "supervisor")
+                      }
+                      className="h-9 rounded-lg border border-input bg-background px-2 text-xs"
+                    >
+                      <option value="user">Role: User</option>
+                      <option value="supervisor">Role: Supervisor</option>
+                    </select>
+                  </>
+                )}
               </div>
             </div>
           );
@@ -321,7 +391,182 @@ function UsersTab({ users }: { users: AdminUser[] }) {
       </div>
 
       <EmailDialog user={emailFor} onClose={() => setEmailFor(null)} />
+      <WhatsappDialog user={waFor} onClose={() => setWaFor(null)} />
+      <EditUserDialog
+        user={editFor}
+        onClose={() => setEditFor(null)}
+        onSaved={() => {
+          setEditFor(null);
+          router.refresh();
+        }}
+      />
     </div>
+  );
+}
+
+const WA_TEMPLATES: { label: string; text: string }[] = [
+  {
+    label: "Konfirmasi pembayaran",
+    text: "Halo {nama} 👋, pembayaran Anda untuk Banana Carousel sudah kami terima & akses lifetime sudah AKTIF. License key dikirim ke email terdaftar. Selamat berkarya! 🍌",
+  },
+  {
+    label: "Kirim ulang license",
+    text: "Halo {nama} 👋, berikut info akses Banana Carousel Anda — license key sudah kami kirim ulang ke email terdaftar. Mohon cek inbox/spam ya 🙏",
+  },
+  {
+    label: "Reminder transfer",
+    text: "Halo {nama} 👋, kami belum menerima konfirmasi transfer Anda untuk Banana Carousel. Jika sudah transfer, mohon kirim bukti agar akses kami aktifkan. Terima kasih 🙏",
+  },
+  {
+    label: "Info promo",
+    text: "Halo {nama} 🎉, ada promo spesial dari Banana Carousel untuk Anda! Balas pesan ini untuk info lebih lanjut ya 😊",
+  },
+  {
+    label: "Sapaan / bantuan",
+    text: "Halo {nama} 😊, ada yang bisa kami bantu terkait Banana Carousel?",
+  },
+];
+
+function WhatsappDialog({
+  user,
+  onClose,
+}: {
+  user: AdminUser | null;
+  onClose: () => void;
+}) {
+  const [text, setText] = React.useState("");
+  React.useEffect(() => {
+    setText("");
+  }, [user]);
+
+  function apply(t: string) {
+    setText(t.split("{nama}").join(user?.name || "Kak"));
+  }
+  function openWa() {
+    const wa = waLink(user?.whatsapp);
+    if (!wa) return toast.error("User belum punya nomor WhatsApp.");
+    window.open(`${wa}?text=${encodeURIComponent(text)}`, "_blank");
+    onClose();
+  }
+
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>WhatsApp ke {user?.name || user?.email}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {WA_TEMPLATES.map((t) => (
+              <Button
+                key={t.label}
+                size="sm"
+                variant="outline"
+                onClick={() => apply(t.text)}
+              >
+                {t.label}
+              </Button>
+            ))}
+          </div>
+          <Textarea
+            rows={5}
+            placeholder="Pilih template di atas atau tulis pesan custom..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Nomor: {user?.whatsapp || "— (tidak ada)"}
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Batal
+          </Button>
+          <Button onClick={openWa} disabled={!text.trim()}>
+            <MessageCircle className="size-4" /> Buka WhatsApp
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditUserDialog({
+  user,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUser | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = React.useState("");
+  const [whatsapp, setWhatsapp] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    setName(user?.name ?? "");
+    setWhatsapp(user?.whatsapp ?? "");
+  }, [user]);
+
+  async function save() {
+    if (!user) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/update-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, name, whatsapp }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Data user disimpan.");
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Data User</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Email (terkunci)</Label>
+            <Input value={user?.email ?? ""} disabled readOnly />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="eu-name">Nama</Label>
+            <Input
+              id="eu-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="eu-wa">No. WhatsApp</Label>
+            <Input
+              id="eu-wa"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>
+            Batal
+          </Button>
+          <Button onClick={save} disabled={busy}>
+            {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+            Simpan
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

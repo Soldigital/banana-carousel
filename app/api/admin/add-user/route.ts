@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminUser } from "@/lib/auth/admin";
+import { getSuperAdminUser } from "@/lib/auth/admin";
 import { ensureAccountForEmail } from "@/lib/auth/account";
 import { grantEntitlementByEmail } from "@/lib/license/entitlement";
 import { sendLicenseEmail } from "@/lib/email/send-license";
@@ -12,7 +12,7 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // Manually add a (promo / free) user: create account + grant lifetime access +
 // email the license key.
 export async function POST(req: Request) {
-  const admin = await getAdminUser();
+  const admin = await getSuperAdminUser();
   if (!admin) return NextResponse.json({ error: "Bukan admin." }, { status: 403 });
 
   try {
