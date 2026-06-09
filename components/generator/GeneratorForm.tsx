@@ -14,6 +14,9 @@ import { useFormStore } from "@/lib/store/form-store";
 import { useUIStore } from "@/lib/store/ui-store";
 import { loadApiKey, hasApiKey } from "@/lib/storage/api-key";
 import { generateCarousel, GeminiError } from "@/lib/gemini/generate-carousel";
+import { generateViaGateway, GatewayError } from "@/lib/ai/client";
+import { USE_GATEWAY } from "@/lib/config/flags";
+import { track } from "@/lib/analytics/track";
 import { saveCarousel } from "@/lib/data/save-carousel";
 import type { CtaStyle, GeneratorInput, Language } from "@/types/carousel";
 
@@ -41,7 +44,9 @@ export function GeneratorForm() {
       toast.error("Isi target audience.");
       return;
     }
-    if (!hasApiKey()) {
+    // Legacy path needs a browser key up front. Gateway path uses server-side
+    // keys, so we let the API tell us if none are configured.
+    if (!USE_GATEWAY && !hasApiKey()) {
       toast.info("Masukkan API key Gemini Anda dulu.");
       openApiModal();
       return;
@@ -51,35 +56,44 @@ export function GeneratorForm() {
     f.setError(null);
     f.setOutput(null);
 
+    const input: GeneratorInput = {
+      title: f.title,
+      brandName: f.brandName,
+      topic: f.topic,
+      audience: f.audience,
+      goal: f.goal,
+      stylePresetId: f.stylePresetId,
+      customStyleNotes: f.customStyleNotes,
+      dominantColors: f.dominantColors,
+      slideCount: f.slideCount,
+      language: f.language,
+      ctaStyle: f.ctaStyle,
+    };
+
     try {
-      const apiKey = await loadApiKey();
-      if (!apiKey) {
-        toast.error("API key tidak ditemukan. Masukkan ulang.");
-        setHasKey(false);
-        openApiModal();
-        f.setIsGenerating(false);
-        return;
+      let output;
+      if (USE_GATEWAY) {
+        output = await generateViaGateway(input);
+      } else {
+        const apiKey = await loadApiKey();
+        if (!apiKey) {
+          toast.error("API key tidak ditemukan. Masukkan ulang.");
+          setHasKey(false);
+          openApiModal();
+          f.setIsGenerating(false);
+          return;
+        }
+        output = await generateCarousel(input, apiKey);
       }
-
-      const input: GeneratorInput = {
-        title: f.title,
-        brandName: f.brandName,
-        topic: f.topic,
-        audience: f.audience,
-        goal: f.goal,
-        stylePresetId: f.stylePresetId,
-        customStyleNotes: f.customStyleNotes,
-        dominantColors: f.dominantColors,
-        slideCount: f.slideCount,
-        language: f.language,
-        ctaStyle: f.ctaStyle,
-      };
-
-      const output = await generateCarousel(input, apiKey);
 
       f.setOutput(output);
       // Save to the user's account history (best-effort, non-blocking).
       void saveCarousel(input, output);
+      track("generate_carousel", {
+        style: input.stylePresetId,
+        slides: input.slideCount,
+        language: input.language,
+      });
       toast.success("Carousel prompt siap! Scroll ke bawah untuk lihat.");
       setTimeout(() => {
         document
@@ -88,14 +102,20 @@ export function GeneratorForm() {
       }, 100);
     } catch (err) {
       const message =
-        err instanceof GeminiError
+        err instanceof GeminiError || err instanceof GatewayError
           ? err.message
           : err instanceof Error
             ? err.message
             : "Terjadi kesalahan tidak terduga.";
       f.setError(message);
       toast.error(message);
-      if (err instanceof GeminiError && err.code === "invalid_key") {
+      // Legacy invalid-key → reopen the browser key modal. In gateway mode the
+      // error message already points the user to add keys in the dashboard.
+      if (
+        !USE_GATEWAY &&
+        err instanceof GeminiError &&
+        err.code === "invalid_key"
+      ) {
         openApiModal();
       }
     } finally {

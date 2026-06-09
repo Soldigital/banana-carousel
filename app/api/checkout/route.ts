@@ -3,12 +3,23 @@ import { createPayment } from "@/lib/ipaymu/client";
 import { signRef } from "@/lib/license/token";
 import { ensureAccountForEmail } from "@/lib/auth/account";
 import { PRICE, PRODUCT_NAME } from "@/lib/config/payment";
+import { rateLimit, clientIp } from "@/lib/security/ratelimit";
 
 export const runtime = "nodejs";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export async function POST(req: Request) {
+  const rl = await rateLimit(`checkout:${clientIp(req)}`, {
+    limit: 10,
+    window: "60 s",
+  });
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Terlalu banyak percobaan. Coba lagi sebentar." },
+      { status: 429 },
+    );
+  }
   try {
     const { email, name, whatsapp } = await req.json();
     const cleanEmail = String(email ?? "").trim().toLowerCase();

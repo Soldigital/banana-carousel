@@ -4,6 +4,7 @@ import { ensureAccountForEmail } from "@/lib/auth/account";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeEmail } from "@/lib/config/app";
+import { rateLimit, clientIp } from "@/lib/security/ratelimit";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,17 @@ export const runtime = "nodejs";
 // grants entitlement, then mints a real Supabase session (no email needed) via
 // admin generateLink + verifyOtp so the user can use the dashboard & generator.
 export async function POST(req: Request) {
+  // Throttle to blunt license-key brute forcing.
+  const rl = await rateLimit(`license-login:${clientIp(req)}`, {
+    limit: 10,
+    window: "60 s",
+  });
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Terlalu banyak percobaan. Coba lagi sebentar." },
+      { status: 429 },
+    );
+  }
   try {
     const { licenseKey } = await req.json();
     const info = verifyLicense(String(licenseKey ?? "").trim());

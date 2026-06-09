@@ -5,6 +5,7 @@ import { ensureAccountForEmail } from "@/lib/auth/account";
 import { notifyTelegram, notifyTelegramPhoto } from "@/lib/telegram/notify";
 import { PRICE, formatIDR } from "@/lib/config/payment";
 import { normalizeEmail } from "@/lib/config/app";
+import { rateLimit, clientIp } from "@/lib/security/ratelimit";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,16 @@ const MAX_BYTES = 5 * 1024 * 1024;
 // proof image + Nama/Email/WhatsApp, auto-creates the buyer's account, uploads
 // the proof via service role, records a pending order, and notifies the admin.
 export async function POST(req: Request) {
+  const rl = await rateLimit(`manual-order:${clientIp(req)}`, {
+    limit: 6,
+    window: "60 s",
+  });
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Terlalu banyak percobaan. Coba lagi sebentar." },
+      { status: 429 },
+    );
+  }
   try {
     const form = await req.formData();
     const email = normalizeEmail(String(form.get("email") ?? ""));

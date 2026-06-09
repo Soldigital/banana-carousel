@@ -14,6 +14,7 @@ import {
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { track } from "@/lib/analytics/track";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -38,6 +39,7 @@ export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
       return;
     }
     setBusy(true);
+    track("begin_checkout", { method: "ipaymu" });
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
