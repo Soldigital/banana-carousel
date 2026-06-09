@@ -62,6 +62,9 @@ export async function POST(req: Request) {
       err instanceof Error ? err.message : "Gagal generate. Coba lagi.";
     const status =
       code === "invalid_key" ? 400 : code === "rate_limit" ? 429 : 502;
+    // Surface failures in Vercel logs for diagnosis (the gateway is otherwise
+    // silent on the route side).
+    console.error("[generate]", code, message);
     return NextResponse.json({ error: message, code }, { status });
   }
 }

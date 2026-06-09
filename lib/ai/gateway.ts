@@ -24,7 +24,14 @@ const PROVIDERS: Record<ProviderId, AiProvider> = {
   groq: groqProvider,
 };
 
-const ATTEMPT_TIMEOUT_MS = 45_000;
+// Time budgets. The route's maxDuration is 60s, so the whole rotation MUST
+// finish (success or a clean error) before that — otherwise Vercel kills the
+// function mid-flight, the connection drops, and the browser shows a misleading
+// "network" error. We cap the total work at GATEWAY_BUDGET_MS and derive each
+// attempt's timeout from the remaining budget.
+const GATEWAY_BUDGET_MS = 52_000;
+const PER_ATTEMPT_MS = 35_000;
+const MIN_ATTEMPT_MS = 8_000;
 
 export interface GatewayResult {
   output: CarouselOutput;
@@ -113,18 +120,34 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
   }
 
   // 2. Rotation: provider order → each enabled key → provider's model chain.
+  // Bounded by a global deadline so we always return before maxDuration.
   let lastError: GenError | null = null;
+  const startedAt = Date.now();
 
   for (const pid of PROVIDER_ORDER) {
     const provider = PROVIDERS[pid];
     const keys = keysByProvider[pid] ?? [];
 
     for (const key of keys) {
+      // Stop rotating once the time budget is nearly spent, so the function
+      // returns a clean error response instead of being killed by the platform.
+      const remaining = GATEWAY_BUDGET_MS - (Date.now() - startedAt);
+      if (remaining < MIN_ATTEMPT_MS) {
+        if (!lastError) {
+          lastError = new GenError(
+            "Waktu pemrosesan habis sebelum semua key sempat dicoba.",
+            "timeout",
+          );
+        }
+        break;
+      }
+      const attemptTimeout = Math.min(PER_ATTEMPT_MS, remaining - 2_000);
+
       const started = Date.now();
       try {
         const { text, model } = await withTimeout(
           provider.generate({ apiKey: key.plaintext, systemPrompt, userPrompt }),
-          ATTEMPT_TIMEOUT_MS,
+          attemptTimeout,
         );
         const parsed = parseCarouselJSON(text);
         const output = finalizeOutput(parsed, input);

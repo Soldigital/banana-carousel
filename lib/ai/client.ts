@@ -13,28 +13,66 @@ export class GatewayError extends Error {
   }
 }
 
+// Client safety-net timeout — above the server's 60s maxDuration so we never
+// abort a request the server is still legitimately answering.
+const CLIENT_TIMEOUT_MS = 65_000;
+
+async function postOnce(input: GeneratorInput): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
+  try {
+    return await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function generateViaGateway(
   input: GeneratorInput,
 ): Promise<CarouselOutput> {
   let res: Response;
   try {
-    res = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input }),
-    });
-  } catch {
-    throw new GatewayError(
-      "Gagal terhubung ke server. Cek koneksi internet Anda.",
-      "network",
-    );
+    res = await postOnce(input);
+  } catch (err) {
+    // AbortError = our client-side safety timeout fired (request hung).
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new GatewayError(
+        "Generate memakan waktu terlalu lama. Coba lagi, atau kurangi jumlah API key yang aktif.",
+        "timeout",
+      );
+    }
+    // True network-level rejection — retry once before giving up, to smooth
+    // over transient connection resets. Do NOT blame the user's internet.
+    try {
+      await new Promise((r) => setTimeout(r, 800));
+      res = await postOnce(input);
+    } catch (err2) {
+      if (err2 instanceof DOMException && err2.name === "AbortError") {
+        throw new GatewayError(
+          "Generate memakan waktu terlalu lama. Coba lagi, atau kurangi jumlah API key yang aktif.",
+          "timeout",
+        );
+      }
+      throw new GatewayError(
+        "Koneksi ke server terputus saat generate. Coba lagi sebentar.",
+        "network",
+      );
+    }
   }
 
   let data: { output?: CarouselOutput; error?: string; code?: string };
   try {
     data = await res.json();
   } catch {
-    throw new GatewayError("Respons server tidak valid.", "parse_error");
+    throw new GatewayError(
+      "Server sedang sibuk memproses generate. Coba lagi sebentar.",
+      "parse_error",
+    );
   }
 
   if (!res.ok || !data.output) {
