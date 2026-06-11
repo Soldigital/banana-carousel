@@ -1,7 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
 import { GEMINI_RESPONSE_SCHEMA } from "@/lib/gemini/schema";
 import { classifyError, GenError } from "../errors";
-import { MODEL_CHAINS, type AiProvider, type GenerateArgs } from "../types";
+import {
+  MODEL_CHAINS,
+  MIN_MODEL_MS,
+  PER_MODEL_CAP_MS,
+  type AiProvider,
+  type GenerateArgs,
+} from "../types";
 
 // Gemini adapter — wraps the existing @google/genai call (schema-enforced JSON)
 // and walks the model fallback chain with a single key.
@@ -9,11 +15,18 @@ import { MODEL_CHAINS, type AiProvider, type GenerateArgs } from "../types";
 export const geminiProvider: AiProvider = {
   id: "gemini",
   models: MODEL_CHAINS.gemini,
-  async generate({ apiKey, systemPrompt, userPrompt }: GenerateArgs) {
+  async generate({ apiKey, systemPrompt, userPrompt, deadlineMs }: GenerateArgs) {
     const ai = new GoogleGenAI({ apiKey });
     let lastError: GenError | null = null;
 
     for (const model of MODEL_CHAINS.gemini) {
+      // Give this model a hard, cancelling slice of the remaining budget. Gemini
+      // free-tier frequently returns 503 "overloaded" and the SDK retries with
+      // backoff — without this the first model can swallow the whole attempt.
+      const slice = deadlineMs
+        ? Math.min(PER_MODEL_CAP_MS, deadlineMs - Date.now())
+        : PER_MODEL_CAP_MS;
+      if (slice < MIN_MODEL_MS) break;
       try {
         const response = await ai.models.generateContent({
           model,
@@ -28,6 +41,10 @@ export const geminiProvider: AiProvider = {
             // ~4k tokens is typical for a full carousel; 8k is ample headroom
             // and ~2x faster/cheaper than the old 16k cap.
             maxOutputTokens: 8192,
+            // Real abort: the SDK turns httpOptions.timeout into an
+            // AbortController that cancels the socket at the slice deadline, so a
+            // hung/overloaded model never overruns the attempt budget.
+            httpOptions: { timeout: slice },
           },
         });
         const text = response.text;

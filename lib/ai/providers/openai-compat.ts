@@ -2,6 +2,8 @@ import OpenAI from "openai";
 import { classifyError, GenError } from "../errors";
 import {
   MODEL_CHAINS,
+  MIN_MODEL_MS,
+  PER_MODEL_CAP_MS,
   PROVIDER_BASE_URLS,
   type AiProvider,
   type GenerateArgs,
@@ -19,10 +21,13 @@ export function makeOpenAICompatProvider(id: ProviderId): AiProvider {
   return {
     id,
     models,
-    async generate({ apiKey, systemPrompt, userPrompt }: GenerateArgs) {
+    async generate({ apiKey, systemPrompt, userPrompt, deadlineMs }: GenerateArgs) {
       const client = new OpenAI({
         apiKey,
         baseURL,
+        // We do our own provider/key rotation, so the SDK's default 2 internal
+        // retries (with backoff) would only multiply latency and blow the budget.
+        maxRetries: 0,
         // OpenRouter recommends these; harmless for Groq.
         defaultHeaders: {
           "HTTP-Referer":
@@ -33,18 +38,26 @@ export function makeOpenAICompatProvider(id: ProviderId): AiProvider {
 
       let lastError: GenError | null = null;
       for (const model of models) {
+        // Hard, cancelling per-model slice of the remaining budget.
+        const slice = deadlineMs
+          ? Math.min(PER_MODEL_CAP_MS, deadlineMs - Date.now())
+          : PER_MODEL_CAP_MS;
+        if (slice < MIN_MODEL_MS) break;
         try {
-          const completion = await client.chat.completions.create({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            temperature: 0.9,
-            top_p: 0.95,
-            max_tokens: 8192,
-            response_format: { type: "json_object" },
-          });
+          const completion = await client.chat.completions.create(
+            {
+              model,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+              ],
+              temperature: 0.9,
+              top_p: 0.95,
+              max_tokens: 8192,
+              response_format: { type: "json_object" },
+            },
+            { signal: AbortSignal.timeout(slice), timeout: slice },
+          );
           const text = completion.choices[0]?.message?.content;
           if (!text) {
             throw new GenError(`${id} mengembalikan respons kosong.`, "parse_error");

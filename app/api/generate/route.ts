@@ -65,6 +65,7 @@ export async function POST(req: Request) {
           provider: result.provider,
           model: result.model,
           cached: result.cached,
+          fallback: result.fallback ?? false,
         },
       },
       { headers: { "x-request-id": requestId } },

@@ -128,7 +128,7 @@ export function exhaustedMessage(last: GenError | null): string {
     case "parse_error":
       return "Provider mengembalikan output yang tidak bisa diparse. Coba generate ulang — biasanya berhasil di percobaan kedua.";
     case "timeout":
-      return "Semua percobaan timeout. Coba lagi sebentar.";
+      return "Semua percobaan timeout — provider sedang lambat/sibuk. Coba lagi sebentar, atau tambahkan key dari provider lain (mis. Groq yang biasanya tercepat) di dashboard agar generate lebih andal.";
     default:
       return last?.message || "Semua provider AI gagal dipanggil. Coba lagi nanti.";
   }

@@ -11,6 +11,7 @@ import { cacheKey, getCached, setCached } from "./cache";
 import { recordHealth, getHealthSnapshot, type KeyHealth } from "./health";
 import { geminiProvider } from "./providers/gemini";
 import { openrouterProvider, groqProvider } from "./providers/openai-compat";
+import { getFallback, tryConsumeFallbackQuota } from "./fallback";
 import {
   PROVIDER_ORDER,
   type AiProvider,
@@ -32,10 +33,15 @@ const PROVIDERS: Record<ProviderId, AiProvider> = {
 // attempt's timeout from the remaining budget.
 const GATEWAY_BUDGET_MS = 52_000;
 // Shorter per-attempt so a few slow/hanging keys can't eat the whole budget
-// before faster keys are reached. A healthy Gemini-Flash / Groq call with the
-// 8k-token cap finishes well within this.
-const PER_ATTEMPT_MS = 20_000;
+// before faster keys are reached. Combined with the providers' per-model abort
+// (PER_MODEL_CAP_MS), a slow key now fails fast and we reach 4-6 candidates
+// within budget instead of only 2-3. A healthy Gemini-Flash / Groq call with
+// the 8k-token cap finishes well within this.
+const PER_ATTEMPT_MS = 15_000;
 const MIN_ATTEMPT_MS = 7_000;
+// When a business fallback is available, hold back this much budget so the
+// emergency call can still run after the user's own keys are exhausted.
+const FALLBACK_RESERVE_MS = 14_000;
 
 export interface GatewayResult {
   output: CarouselOutput;
@@ -43,6 +49,8 @@ export interface GatewayResult {
   model: string;
   keyId: string;
   cached: boolean;
+  /** True when served by the business emergency fallback, not a user key. */
+  fallback?: boolean;
 }
 
 export interface GatewayArgs {
@@ -180,9 +188,15 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
   let attempts = 0;
   const startedAt = Date.now();
 
+  // If a business emergency fallback is available, hold back a slice of the
+  // budget so it can still run after the user's own keys are exhausted.
+  const fallback = getFallback();
+  const userKeyFloor =
+    MIN_ATTEMPT_MS + (fallback ? FALLBACK_RESERVE_MS : 0);
+
   for (const { pid, key } of ordered) {
     const remaining = GATEWAY_BUDGET_MS - (Date.now() - startedAt);
-    if (remaining < MIN_ATTEMPT_MS) {
+    if (remaining < userKeyFloor) {
       if (!lastError) {
         lastError = new GenError(
           "Waktu pemrosesan habis sebelum semua key sempat dicoba.",
@@ -202,7 +216,12 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
     const started = Date.now();
     try {
       const { text, model } = await withTimeout(
-        provider.generate({ apiKey: key.plaintext, systemPrompt, userPrompt }),
+        provider.generate({
+          apiKey: key.plaintext,
+          systemPrompt,
+          userPrompt,
+          deadlineMs: Date.now() + attemptTimeout,
+        }),
         attemptTimeout,
       );
       const parsed = parseCarouselJSON(text);
@@ -236,7 +255,7 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
     }
   }
 
-  // 4. Last-resort fallback: if a cached result for this exact prompt exists
+  // 4. Last-resort cache: if a cached result for this exact prompt exists
   // (e.g. populated by a concurrent request), serve it rather than failing.
   const stale = await getCached(ck);
   if (stale) {
@@ -247,6 +266,51 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
       keyId: "",
       cached: true,
     };
+  }
+
+  // 5. Business emergency fallback (opt-in, capped, killable). Only reached when
+  // every user key failed. Bounded by its own time budget + a daily quota so a
+  // bad day can't run up unbounded cost. Failure here never masks the original
+  // user-facing error.
+  if (fallback) {
+    const remaining = GATEWAY_BUDGET_MS - (Date.now() - startedAt);
+    if (remaining >= MIN_ATTEMPT_MS && (await tryConsumeFallbackQuota(fallback.dailyLimit))) {
+      const attemptTimeout = Math.min(PER_ATTEMPT_MS, remaining - 2_000);
+      const provider = PROVIDERS[fallback.provider];
+      try {
+        const { text, model } = await withTimeout(
+          provider.generate({
+            apiKey: fallback.key.plaintext,
+            systemPrompt,
+            userPrompt,
+            deadlineMs: Date.now() + attemptTimeout,
+          }),
+          attemptTimeout,
+        );
+        const parsed = parseCarouselJSON(text);
+        const output = finalizeOutput(parsed, input);
+        void setCached(ck, output);
+        console.warn(
+          `[generate] served via emergency fallback (${fallback.provider})`,
+          args.requestId ?? "",
+        );
+        return {
+          output,
+          provider: fallback.provider,
+          model,
+          keyId: "",
+          cached: false,
+          fallback: true,
+        };
+      } catch (err) {
+        const c = err instanceof GenError ? err : classifyError(err);
+        console.warn(
+          `[generate] emergency fallback failed: ${c.code}`,
+          args.requestId ?? "",
+        );
+        // Fall through to the user's original error below.
+      }
+    }
   }
 
   throw new GenError(

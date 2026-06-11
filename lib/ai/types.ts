@@ -40,10 +40,25 @@ export const PROVIDER_BASE_URLS: Partial<Record<ProviderId, string>> = {
   groq: "https://api.groq.com/openai/v1",
 };
 
+// Hard per-model wall. A single model call gets at most this long before it is
+// ABORTED (the underlying socket is cancelled) and the chain moves on. This is
+// what keeps one slow/overloaded model from eating an entire attempt's budget,
+// so the gateway can reach many more keys within its global deadline.
+export const PER_MODEL_CAP_MS = 11_000;
+// Below this much remaining time, don't even start another model — there isn't
+// enough budget for a useful attempt.
+export const MIN_MODEL_MS = 2_000;
+
 export interface GenerateArgs {
   apiKey: string;
   systemPrompt: string;
   userPrompt: string;
+  /**
+   * Epoch ms by which the whole provider call (its model chain) must finish.
+   * Each model is given min(PER_MODEL_CAP_MS, deadline - now) and aborted at
+   * that point. Omitted → provider falls back to PER_MODEL_CAP_MS per model.
+   */
+  deadlineMs?: number;
 }
 
 export interface GenRawResult {
