@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { issueLicense } from "@/lib/license/token";
 import { normalizeEmail } from "@/lib/config/app";
+import { captureError } from "@/lib/observability/sentry";
 import type { OrderMethod } from "@/types/db";
 
 // Server-side entitlement, keyed by EMAIL so it survives the "paid before
@@ -47,7 +48,7 @@ export async function grantEntitlementByEmail(
       return { token: existing.access_code, duplicate: true };
     }
     const token = issueLicense(email);
-    await admin
+    const { error: updErr } = await admin
       .from("orders")
       .update({
         status: "approved",
@@ -56,6 +57,8 @@ export async function grantEntitlementByEmail(
         approved_by: opts.approvedBy ?? null,
       })
       .eq("id", opts.orderId);
+    // Surface a failed approval to the admin route instead of reporting success.
+    if (updErr) throw updErr;
     await setProfilePro(admin, email, token);
     return { token, duplicate: false };
   }
@@ -74,7 +77,11 @@ export async function grantEntitlementByEmail(
   }
 
   const token = issueLicense(email);
-  await admin.from("orders").insert({
+  // CRITICAL: this order row is the only durable record of the purchase —
+  // reconcileOnLogin() relies on it to grant access if setProfilePro misses.
+  // If the insert fails we must NOT report success (the iPaymu webhook re-queries
+  // + the caller can alert), otherwise the buyer pays with no recoverable record.
+  const { error: insErr } = await admin.from("orders").insert({
     email,
     name: opts.name ?? null,
     whatsapp: opts.whatsapp ?? null,
@@ -85,6 +92,7 @@ export async function grantEntitlementByEmail(
     access_code: token,
     approved_at: now,
   });
+  if (insErr) throw insErr;
   await setProfilePro(admin, email, token);
   return { token, duplicate: false };
 }
@@ -96,10 +104,17 @@ async function setProfilePro(
   email: string,
   token: string,
 ): Promise<void> {
-  await admin
+  // Best-effort: if the account doesn't exist yet (paid-before-signup) this
+  // updates 0 rows, and reconcileOnLogin() flips is_pro on first dashboard load.
+  // A genuine DB error, though, must not be swallowed silently.
+  const { error } = await admin
     .from("profiles")
     .update({ is_pro: true, access_code: token })
     .eq("email", email);
+  if (error) {
+    console.error("[entitlement] setProfilePro failed", email, error.message);
+    void captureError(error, { scope: "setProfilePro", email });
+  }
 }
 
 // Called on dashboard load: links orphan orders to the account and flips

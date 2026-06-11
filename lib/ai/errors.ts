@@ -62,11 +62,17 @@ export function classifyError(err: unknown): GenError {
   }
   if (
     status === 429 ||
+    status === 413 ||
     lower.includes("rate") ||
     lower.includes("quota") ||
     lower.includes("429") ||
     lower.includes("exhaust") ||
-    lower.includes("insufficient")
+    lower.includes("insufficient") ||
+    // Groq/OpenAI per-minute token limits surface as 413 "request too large"
+    // or messages mentioning tokens-per-minute — treat as a transient rate cap.
+    lower.includes("request too large") ||
+    lower.includes("tokens per minute") ||
+    lower.includes("tpm")
   ) {
     return new GenError(
       "Quota / rate limit tercapai pada key ini.",

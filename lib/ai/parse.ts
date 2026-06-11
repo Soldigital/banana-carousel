@@ -45,9 +45,44 @@ function parseJSON(text: string): unknown {
   );
 }
 
+const VALID_ROLES = ["hook", "context", "value", "story", "cta"];
+
+// Repair small, non-critical drifts that schema-free providers (Groq/OpenRouter)
+// occasionally produce, so one cosmetic deviation doesn't fail an otherwise-good
+// carousel. Gemini (responseSchema-enforced) never hits these. We ONLY touch
+// fields that are either non-semantic or get overwritten downstream:
+//   - slide.role: coerce an off-enum value by position (first=hook, last=cta,
+//     otherwise value). Role is metadata; the visual output doesn't depend on it.
+//   - slide.slide_num: coerce to its 1-based index (finalizeOutput renumbers it
+//     anyway; this just gets it past the int(1..10) check first).
+function normalizeForSchema(parsed: unknown): unknown {
+  if (!parsed || typeof parsed !== "object") return parsed;
+  const obj = parsed as Record<string, unknown>;
+  if (Array.isArray(obj.slides)) {
+    const n = obj.slides.length;
+    obj.slides = obj.slides.map((raw, i) => {
+      if (!raw || typeof raw !== "object") return raw;
+      const s = raw as Record<string, unknown>;
+      if (typeof s.role !== "string" || !VALID_ROLES.includes(s.role)) {
+        s.role = i === 0 ? "hook" : i === n - 1 ? "cta" : "value";
+      }
+      if (
+        typeof s.slide_num !== "number" ||
+        !Number.isInteger(s.slide_num) ||
+        s.slide_num < 1 ||
+        s.slide_num > 10
+      ) {
+        s.slide_num = i + 1;
+      }
+      return s;
+    });
+  }
+  return obj;
+}
+
 // Parse + Zod-validate raw model text into a carousel object, or throw GenError.
 export function parseCarouselJSON(text: string): CarouselOutputZ {
-  const parsed = parseJSON(text);
+  const parsed = normalizeForSchema(parseJSON(text));
   const validation = CarouselOutputSchema.safeParse(parsed);
   if (!validation.success) {
     throw new GenError(

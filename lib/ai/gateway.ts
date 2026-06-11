@@ -14,6 +14,7 @@ import { openrouterProvider, groqProvider } from "./providers/openai-compat";
 import { getFallback, tryConsumeFallbackQuota } from "./fallback";
 import {
   PROVIDER_ORDER,
+  MIN_MODEL_MS,
   type AiProvider,
   type KeysByProvider,
   type ProviderId,
@@ -209,7 +210,10 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
       );
       break;
     }
-    const attemptTimeout = Math.min(PER_ATTEMPT_MS, remaining - 2_000);
+    const attemptTimeout = Math.max(
+      MIN_MODEL_MS,
+      Math.min(PER_ATTEMPT_MS, remaining - 2_000),
+    );
     const provider = PROVIDERS[pid];
     attempts += 1;
 
@@ -275,7 +279,10 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
   if (fallback) {
     const remaining = GATEWAY_BUDGET_MS - (Date.now() - startedAt);
     if (remaining >= MIN_ATTEMPT_MS && (await tryConsumeFallbackQuota(fallback.dailyLimit))) {
-      const attemptTimeout = Math.min(PER_ATTEMPT_MS, remaining - 2_000);
+      const attemptTimeout = Math.max(
+      MIN_MODEL_MS,
+      Math.min(PER_ATTEMPT_MS, remaining - 2_000),
+    );
       const provider = PROVIDERS[fallback.provider];
       try {
         const { text, model } = await withTimeout(

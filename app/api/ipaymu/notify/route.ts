@@ -10,6 +10,7 @@ import { grantEntitlementByEmail } from "@/lib/license/entitlement";
 import { ensureAccountForEmail } from "@/lib/auth/account";
 import { sendLicenseEmail } from "@/lib/email/send-license";
 import { notifyTelegram } from "@/lib/telegram/notify";
+import { captureError } from "@/lib/observability/sentry";
 import { PRICE, formatIDR } from "@/lib/config/payment";
 
 export const runtime = "nodejs";
@@ -41,7 +42,19 @@ export async function POST(req: Request) {
     const ref = referenceId || transactionReferenceId(tx);
     const email = verifyRef(ref);
     if (!email) {
-      console.warn("[notify] paid but could not resolve buyer email from referenceId");
+      // Paid, but we cannot resolve the buyer (e.g. LICENSE_SECRET rotated since
+      // checkout). Returning 200 avoids an iPaymu retry-storm, but this is a
+      // money-received-no-license case → alert the owner so they can issue it.
+      console.error("[notify] PAID but unresolved buyer email", trxId);
+      void captureError(new Error("ipaymu paid but referenceId unverifiable"), {
+        scope: "ipaymu-notify",
+        trxId,
+      });
+      await notifyTelegram(
+        `⚠️ <b>iPaymu BAYAR tapi email tidak terverifikasi</b>\n` +
+          `TRX: <code>${trxId}</code>\n` +
+          `Terbitkan lisensi manual via panel admin.`,
+      );
       return NextResponse.json({ ok: true });
     }
 
@@ -72,7 +85,16 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
+    // A failure here may mean a paid transaction wasn't fully processed (e.g. the
+    // order insert threw). Stay 200 to avoid retry-storms, but escalate so the
+    // owner can reconcile manually.
     console.error("[notify]", err);
+    void captureError(err, { scope: "ipaymu-notify-fatal" });
+    await notifyTelegram(
+      `🚨 <b>iPaymu webhook gagal diproses</b>\n` +
+        `Cek log Sentry/Vercel & terbitkan lisensi manual bila perlu.\n` +
+        `<code>${err instanceof Error ? err.message : String(err)}</code>`,
+    ).catch(() => {});
     return NextResponse.json({ ok: true });
   }
 }

@@ -23,12 +23,25 @@ const SCHEMA_INSTRUCTION = `
 # REQUIRED JSON SHAPE (CRITICAL — must match exactly)
 Return a single json object that EXACTLY matches this JSON Schema. EVERY required key must be present at the correct nesting — especially the TOP-LEVEL "slides" array and the "cta" object. Do NOT nest "slides" inside another object.
 ${JSON.stringify(GEMINI_RESPONSE_SCHEMA)}
-The "slides" array MUST contain exactly the number of slides given by "SLIDE COUNT" in the user message, and each slide MUST include: slide_num, role, headline, body, visual_prompt (>=20 chars), typography_instruction, layout_instruction.`;
 
-// OpenAI-compat models have no schema enforcement, so a full carousel (all
-// slides + the long gemini_ready_prompt) needs more room than Gemini's 8k cap
-// or the JSON gets truncated mid-object → unparseable.
-const OPENAI_COMPAT_MAX_TOKENS = 16384;
+# HARD CONSTRAINTS (output is REJECTED if any is violated)
+- "slides": an array of 3 to 10 items. It MUST contain EXACTLY the number given by "SLIDE COUNT" in the user message.
+- Each slide object MUST have ALL of: slide_num, role, headline, body, visual_prompt, typography_instruction, layout_instruction.
+- "slide_num": integer starting at 1, incrementing by 1, with no gaps (1,2,3,...).
+- "role": exactly one of "hook", "context", "value", "story", "cta".
+- "visual_prompt": at least 20 characters (detailed English visual description).
+- "gemini_ready_prompt": at least 200 characters.
+- "caption": at least 30 characters.
+- "global_style.color_palette": an array of at least 2 color strings.
+- Every other string field (carousel_title, headline, body, hook.*, cta.*, global_style.mood/typography_family/aspect_ratio/consistency_notes, typography_instruction, layout_instruction) MUST be non-empty.
+- No extra top-level keys. No markdown, no code fences — just the json object.`;
+
+// Output cap for OpenAI-compat providers. 8192 fits a full 10-slide carousel
+// (observed ~2.7k-4.5k completion tokens) with headroom. We intentionally do
+// NOT go higher: Groq's free tier enforces a 12k tokens-per-minute limit and
+// counts max_tokens toward it, so a larger reservation gets rejected with a 413
+// "request too large" before the model even runs.
+const OPENAI_COMPAT_MAX_TOKENS = 8192;
 
 // Shared adapter for OpenAI-compatible providers (OpenRouter & Groq). Both
 // expose /chat/completions with JSON mode. We walk the model chain with one key.
