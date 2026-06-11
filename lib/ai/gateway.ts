@@ -31,8 +31,11 @@ const PROVIDERS: Record<ProviderId, AiProvider> = {
 // "network" error. We cap the total work at GATEWAY_BUDGET_MS and derive each
 // attempt's timeout from the remaining budget.
 const GATEWAY_BUDGET_MS = 52_000;
-const PER_ATTEMPT_MS = 35_000;
-const MIN_ATTEMPT_MS = 8_000;
+// Shorter per-attempt so a few slow/hanging keys can't eat the whole budget
+// before faster keys are reached. A healthy Gemini-Flash / Groq call with the
+// 8k-token cap finishes well within this.
+const PER_ATTEMPT_MS = 20_000;
+const MIN_ATTEMPT_MS = 7_000;
 
 export interface GatewayResult {
   output: CarouselOutput;
@@ -151,13 +154,20 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
     };
   }
 
-  // 2. Build the attempt list (provider order → keys), then reorder by health
-  // so the healthiest/fastest key is tried first — this stops a dead/slow key
-  // from burning the time budget before a good one is reached.
+  // 2. Build the attempt list by ROUND-ROBIN across providers (gemini →
+  // openrouter → groq → gemini → …) instead of all-of-one-provider-first. This
+  // guarantees a fast provider (e.g. Groq) is reached within the first few
+  // attempts even with no health history (cold start), so slow Gemini keys
+  // can't exhaust the budget before the fast ones are tried.
+  const buckets = PROVIDER_ORDER.map((pid) =>
+    (keysByProvider[pid] ?? []).map((key) => ({ pid, key }) as Candidate),
+  );
   const candidates: Candidate[] = [];
-  for (const pid of PROVIDER_ORDER) {
-    for (const key of keysByProvider[pid] ?? []) candidates.push({ pid, key });
+  for (let i = 0; candidates.length < buckets.reduce((n, b) => n + b.length, 0); i++) {
+    for (const b of buckets) if (i < b.length) candidates.push(b[i]);
   }
+  // Then refine by health (stable sort keeps the round-robin order when there's
+  // no health data yet; promotes proven-fast keys once metrics accumulate).
   const health = await getHealthSnapshot(
     userId,
     candidates.map((c) => ({ id: c.key.id, provider: c.pid })),
