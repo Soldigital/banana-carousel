@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -29,4 +31,12 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry build wrapper. Source-map upload only runs when SENTRY_AUTH_TOKEN +
+// org/project are set; without them the build still succeeds (just no maps).
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+});
