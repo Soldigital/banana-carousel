@@ -108,7 +108,7 @@ export default function RootLayout({
           </AuthProvider>
         </ThemeProvider>
         {tidioKey && (
-          <Script src={`//code.tidio.co/${tidioKey}.js`} strategy="afterInteractive" />
+          <Script src={`//code.tidio.co/${tidioKey}.js`} strategy="lazyOnload" />
         )}
       </body>
     </html>

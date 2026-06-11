@@ -42,6 +42,7 @@ export function makeOpenAICompatProvider(id: ProviderId): AiProvider {
             ],
             temperature: 0.9,
             top_p: 0.95,
+            max_tokens: 8192,
             response_format: { type: "json_object" },
           });
           const text = completion.choices[0]?.message?.content;

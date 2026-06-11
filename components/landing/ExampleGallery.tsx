@@ -37,6 +37,9 @@ function PosterCarousel({ images }: { images: ExampleImage[] }) {
               alt={img.alt}
               loading="lazy"
               decoding="async"
+              width={1080}
+              height={1350}
+              style={{ aspectRatio: "4 / 5" }}
               className="w-full h-auto rounded-2xl border border-border bg-card shadow-sm"
             />
           </div>

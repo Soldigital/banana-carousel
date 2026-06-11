@@ -24,16 +24,18 @@ export async function listPendingManualOrders(): Promise<AdminOrder[]> {
   }
 
   const orders = (data as Order[]) ?? [];
-  const result: AdminOrder[] = [];
-  for (const o of orders) {
-    let proofSignedUrl: string | null = null;
-    if (o.proof_url) {
-      const { data: signed } = await admin.storage
+
+  // Sign all proof URLs in parallel (was sequential — N storage round-trips
+  // added up to seconds on a busy approval queue).
+  const signed = await Promise.all(
+    orders.map(async (o): Promise<string | null> => {
+      if (!o.proof_url) return null;
+      const { data: s } = await admin.storage
         .from("transfer-proofs")
         .createSignedUrl(o.proof_url, SIGNED_URL_TTL);
-      proofSignedUrl = signed?.signedUrl ?? null;
-    }
-    result.push({ ...o, proofSignedUrl });
-  }
-  return result;
+      return s?.signedUrl ?? null;
+    }),
+  );
+
+  return orders.map((o, i) => ({ ...o, proofSignedUrl: signed[i] }));
 }

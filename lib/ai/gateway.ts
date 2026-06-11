@@ -8,7 +8,7 @@ import type { CarouselOutputZ } from "@/lib/gemini/schema";
 import { GenError, classifyError, exhaustedMessage } from "./errors";
 import { parseCarouselJSON } from "./parse";
 import { cacheKey, getCached, setCached } from "./cache";
-import { recordHealth } from "./health";
+import { recordHealth, getHealthSnapshot, type KeyHealth } from "./health";
 import { geminiProvider } from "./providers/gemini";
 import { openrouterProvider, groqProvider } from "./providers/openai-compat";
 import {
@@ -16,6 +16,7 @@ import {
   type AiProvider,
   type KeysByProvider,
   type ProviderId,
+  type ResolvedKey,
 } from "./types";
 
 const PROVIDERS: Record<ProviderId, AiProvider> = {
@@ -45,6 +46,37 @@ export interface GatewayArgs {
   userId: string;
   input: GeneratorInput;
   keysByProvider: KeysByProvider;
+  /** Optional correlation id for log tracing. */
+  requestId?: string;
+}
+
+interface Candidate {
+  pid: ProviderId;
+  key: ResolvedKey;
+}
+
+// A key with no health history is treated optimistically (neutral) so it still
+// ranks ahead of keys with a proven-bad recent record but behind proven-good
+// ones. With Upstash off, every key scores neutral → stable PROVIDER_ORDER.
+function healthScore(h: KeyHealth | null | undefined): number {
+  if (!h || h.ok + h.err === 0) return 0.75;
+  return h.successRate;
+}
+
+// Order attempts by recent success rate, then by last latency. Stable sort
+// (V8) preserves PROVIDER_ORDER for equal scores.
+function orderCandidates(
+  candidates: Candidate[],
+  health: Record<string, KeyHealth | null>,
+): Candidate[] {
+  return [...candidates].sort((a, b) => {
+    const sb = healthScore(health[b.key.id]);
+    const sa = healthScore(health[a.key.id]);
+    if (sb !== sa) return sb - sa;
+    const la = health[a.key.id]?.lastLatencyMs ?? Number.POSITIVE_INFINITY;
+    const lb = health[b.key.id]?.lastLatencyMs ?? Number.POSITIVE_INFINITY;
+    return la - lb;
+  });
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -119,67 +151,97 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
     };
   }
 
-  // 2. Rotation: provider order → each enabled key → provider's model chain.
-  // Bounded by a global deadline so we always return before maxDuration.
+  // 2. Build the attempt list (provider order → keys), then reorder by health
+  // so the healthiest/fastest key is tried first — this stops a dead/slow key
+  // from burning the time budget before a good one is reached.
+  const candidates: Candidate[] = [];
+  for (const pid of PROVIDER_ORDER) {
+    for (const key of keysByProvider[pid] ?? []) candidates.push({ pid, key });
+  }
+  const health = await getHealthSnapshot(
+    userId,
+    candidates.map((c) => ({ id: c.key.id, provider: c.pid })),
+  );
+  const ordered = orderCandidates(candidates, health);
+
+  // 3. Rotation, bounded by a global deadline so we always return before
+  // maxDuration (a clean error response instead of a killed function).
   let lastError: GenError | null = null;
+  let attempts = 0;
   const startedAt = Date.now();
 
-  for (const pid of PROVIDER_ORDER) {
-    const provider = PROVIDERS[pid];
-    const keys = keysByProvider[pid] ?? [];
-
-    for (const key of keys) {
-      // Stop rotating once the time budget is nearly spent, so the function
-      // returns a clean error response instead of being killed by the platform.
-      const remaining = GATEWAY_BUDGET_MS - (Date.now() - startedAt);
-      if (remaining < MIN_ATTEMPT_MS) {
-        if (!lastError) {
-          lastError = new GenError(
-            "Waktu pemrosesan habis sebelum semua key sempat dicoba.",
-            "timeout",
-          );
-        }
-        break;
-      }
-      const attemptTimeout = Math.min(PER_ATTEMPT_MS, remaining - 2_000);
-
-      const started = Date.now();
-      try {
-        const { text, model } = await withTimeout(
-          provider.generate({ apiKey: key.plaintext, systemPrompt, userPrompt }),
-          attemptTimeout,
+  for (const { pid, key } of ordered) {
+    const remaining = GATEWAY_BUDGET_MS - (Date.now() - startedAt);
+    if (remaining < MIN_ATTEMPT_MS) {
+      if (!lastError) {
+        lastError = new GenError(
+          "Waktu pemrosesan habis sebelum semua key sempat dicoba.",
+          "timeout",
         );
-        const parsed = parseCarouselJSON(text);
-        const output = finalizeOutput(parsed, input);
-
-        void recordHealth({
-          userId,
-          provider: pid,
-          keyId: key.id,
-          model,
-          ok: true,
-          latencyMs: Date.now() - started,
-        });
-        void setCached(ck, output);
-
-        return { output, provider: pid, model, keyId: key.id, cached: false };
-      } catch (err) {
-        const c = err instanceof GenError ? err : classifyError(err);
-        lastError = c;
-        void recordHealth({
-          userId,
-          provider: pid,
-          keyId: key.id,
-          model: null,
-          ok: false,
-          latencyMs: Date.now() - started,
-          errorCode: c.code,
-        });
-        // Move on to the next key (then next provider). A parse_error from one
-        // key/model is worth retrying on another.
       }
+      console.warn(
+        `[generate] budget exhausted after ${attempts}/${ordered.length} attempts`,
+        args.requestId ?? "",
+      );
+      break;
+    }
+    const attemptTimeout = Math.min(PER_ATTEMPT_MS, remaining - 2_000);
+    const provider = PROVIDERS[pid];
+    attempts += 1;
+
+    const started = Date.now();
+    try {
+      const { text, model } = await withTimeout(
+        provider.generate({ apiKey: key.plaintext, systemPrompt, userPrompt }),
+        attemptTimeout,
+      );
+      const parsed = parseCarouselJSON(text);
+      const output = finalizeOutput(parsed, input);
+
+      void recordHealth({
+        userId,
+        provider: pid,
+        keyId: key.id,
+        model,
+        ok: true,
+        latencyMs: Date.now() - started,
+      });
+      void setCached(ck, output);
+
+      return { output, provider: pid, model, keyId: key.id, cached: false };
+    } catch (err) {
+      const c = err instanceof GenError ? err : classifyError(err);
+      lastError = c;
+      void recordHealth({
+        userId,
+        provider: pid,
+        keyId: key.id,
+        model: null,
+        ok: false,
+        latencyMs: Date.now() - started,
+        errorCode: c.code,
+      });
+      // Move on to the next candidate. A parse_error from one key/model is
+      // worth retrying on another.
     }
   }
 
-  throw new GenError(exhaustedMessage(lastError), lastError?.code ?? "unknown", lastError);
+  // 4. Last-resort fallback: if a cached result for this exact prompt exists
+  // (e.g. populated by a concurrent request), serve it rather than failing.
+  const stale = await getCached(ck);
+  if (stale) {
+    return {
+      output: stale,
+      provider: "cache",
+      model: "cache",
+      keyId: "",
+      cached: true,
+    };
+  }
+
+  throw new GenError(
+    exhaustedMessage(lastError),
+    lastError?.code ?? "unknown",
+    lastError,
+  );
 }

@@ -25,7 +25,9 @@ export const geminiProvider: AiProvider = {
             responseSchema: GEMINI_RESPONSE_SCHEMA as any,
             temperature: 0.9,
             topP: 0.95,
-            maxOutputTokens: 16384,
+            // ~4k tokens is typical for a full carousel; 8k is ample headroom
+            // and ~2x faster/cheaper than the old 16k cap.
+            maxOutputTokens: 8192,
           },
         });
         const text = response.text;
