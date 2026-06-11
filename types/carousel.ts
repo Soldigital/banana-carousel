@@ -68,4 +68,10 @@ export interface StylePreset {
   colorHints: string[];
   visualInstruction: string;
   typographyHint: string;
+  /** Category label used to group presets in the selection grid. */
+  category?: string;
+  /** Short "best for" guidance shown as a tooltip / hint on the card. */
+  bestFor?: string;
+  /** Retired presets: still resolvable via getPresetById, hidden from the grid. */
+  hidden?: boolean;
 }
