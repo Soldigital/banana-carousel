@@ -1,8 +1,13 @@
 "use client";
 
+import * as React from "react";
 import { Check } from "lucide-react";
 import { motion } from "framer-motion";
-import { STYLE_PRESETS, STYLE_CATEGORIES } from "@/lib/prompts/style-presets";
+import {
+  STYLE_PRESETS,
+  STYLE_CATEGORIES,
+  getPresetById,
+} from "@/lib/prompts/style-presets";
 import { useFormStore } from "@/lib/store/form-store";
 import { cn } from "@/lib/utils";
 import type { StylePreset } from "@/types/carousel";
@@ -11,31 +16,40 @@ export function StylePresetGrid() {
   const selected = useFormStore((s) => s.stylePresetId);
   const setStyle = useFormStore((s) => s.setStylePreset);
 
+  // Open the dropdown on the category of the currently-selected style.
+  const [activeCategory, setActiveCategory] = React.useState<string>(
+    () => getPresetById(selected).category ?? STYLE_CATEGORIES[0],
+  );
+
+  const presets = STYLE_PRESETS.filter(
+    (p) => p.category === activeCategory && !p.hidden,
+  );
+
   return (
-    <div className="space-y-6">
-      {STYLE_CATEGORIES.map((category) => {
-        const presets = STYLE_PRESETS.filter(
-          (p) => p.category === category && !p.hidden,
-        );
-        if (presets.length === 0) return null;
-        return (
-          <div key={category} className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {category}
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {presets.map((preset) => (
-                <PresetCard
-                  key={preset.id}
-                  preset={preset}
-                  isActive={selected === preset.id}
-                  onSelect={() => setStyle(preset.id)}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      })}
+    <div className="space-y-3">
+      <select
+        aria-label="Kategori style visual"
+        value={activeCategory}
+        onChange={(e) => setActiveCategory(e.target.value)}
+        className="flex h-11 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {STYLE_CATEGORIES.map((category) => (
+          <option key={category} value={category}>
+            {category}
+          </option>
+        ))}
+      </select>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {presets.map((preset) => (
+          <PresetCard
+            key={preset.id}
+            preset={preset}
+            isActive={selected === preset.id}
+            onSelect={() => setStyle(preset.id)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
