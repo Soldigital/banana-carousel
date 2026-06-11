@@ -26,8 +26,17 @@ export async function POST(req: Request) {
       { status: 429 },
     );
   }
+  let form: FormData;
   try {
-    const form = await req.formData();
+    form = await req.formData();
+  } catch {
+    // Non-multipart / malformed body — reject cleanly instead of a 500.
+    return NextResponse.json(
+      { error: "Format request tidak valid (harus form upload)." },
+      { status: 400 },
+    );
+  }
+  try {
     const email = normalizeEmail(String(form.get("email") ?? ""));
     const name = String(form.get("name") ?? "").trim() || null;
     const whatsapp = String(form.get("whatsapp") ?? "").trim() || null;
