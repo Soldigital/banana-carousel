@@ -305,7 +305,7 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
       } catch (err) {
         const c = err instanceof GenError ? err : classifyError(err);
         console.warn(
-          `[generate] emergency fallback failed: ${c.code}`,
+          `[generate] emergency fallback failed: ${c.code} — ${c.message}`,
           args.requestId ?? "",
         );
         // Fall through to the user's original error below.

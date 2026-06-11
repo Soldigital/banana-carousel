@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { GEMINI_RESPONSE_SCHEMA } from "@/lib/gemini/schema";
 import { classifyError, GenError } from "../errors";
 import {
   MODEL_CHAINS,
@@ -9,6 +10,25 @@ import {
   type GenerateArgs,
   type ProviderId,
 } from "../types";
+
+// Unlike Gemini (which enforces shape via responseSchema), OpenAI-compatible
+// providers only get `response_format: json_object` — that guarantees valid
+// JSON but NOT the right shape. Without the schema the model omits required keys
+// (notably the top-level `slides` array and `cta`), so output fails
+// CarouselOutputSchema → the whole attempt errors. We therefore inject the exact
+// JSON Schema into the system message. The literal word "json" here also
+// satisfies Groq's json_object requirement regardless of the base prompt wording.
+const SCHEMA_INSTRUCTION = `
+
+# REQUIRED JSON SHAPE (CRITICAL — must match exactly)
+Return a single json object that EXACTLY matches this JSON Schema. EVERY required key must be present at the correct nesting — especially the TOP-LEVEL "slides" array and the "cta" object. Do NOT nest "slides" inside another object.
+${JSON.stringify(GEMINI_RESPONSE_SCHEMA)}
+The "slides" array MUST contain exactly the number of slides given by "SLIDE COUNT" in the user message, and each slide MUST include: slide_num, role, headline, body, visual_prompt (>=20 chars), typography_instruction, layout_instruction.`;
+
+// OpenAI-compat models have no schema enforcement, so a full carousel (all
+// slides + the long gemini_ready_prompt) needs more room than Gemini's 8k cap
+// or the JSON gets truncated mid-object → unparseable.
+const OPENAI_COMPAT_MAX_TOKENS = 16384;
 
 // Shared adapter for OpenAI-compatible providers (OpenRouter & Groq). Both
 // expose /chat/completions with JSON mode. We walk the model chain with one key.
@@ -48,12 +68,12 @@ export function makeOpenAICompatProvider(id: ProviderId): AiProvider {
             {
               model,
               messages: [
-                { role: "system", content: systemPrompt },
+                { role: "system", content: systemPrompt + SCHEMA_INSTRUCTION },
                 { role: "user", content: userPrompt },
               ],
               temperature: 0.9,
               top_p: 0.95,
-              max_tokens: 8192,
+              max_tokens: OPENAI_COMPAT_MAX_TOKENS,
               response_format: { type: "json_object" },
             },
             { signal: AbortSignal.timeout(slice), timeout: slice },
