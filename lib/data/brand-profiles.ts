@@ -14,10 +14,20 @@ export type BrandProfileInput = Partial<
     | "brand_color"
     | "default_style_preset_id"
     | "logo_path"
+    | "secondary_color"
+    | "target_audience"
+    | "tone_of_voice"
+    | "default_language"
+    | "default_slide_count"
+    | "username_position"
+    | "username_size"
+    | "username_style"
   >
 >;
 
-export const MAX_BRAND_PROFILES = 20;
+// Spec: max 3 brand profiles per user. Enforced on create only — existing
+// profiles beyond this are never touched.
+export const MAX_BRAND_PROFILES = 3;
 
 const STR_FIELDS = [
   "name",
@@ -28,9 +38,17 @@ const STR_FIELDS = [
   "brand_color",
   "default_style_preset_id",
   "logo_path",
+  "secondary_color",
+  "target_audience",
+  "tone_of_voice",
+  "default_language",
+  "username_position",
+  "username_size",
+  "username_style",
 ] as const;
 
-// Keep only known string fields, trimmed; empty string => null.
+// Keep only known fields, trimmed; empty string => null. default_slide_count is
+// an integer clamped to a sane carousel range.
 export function sanitizeBrandInput(body: unknown): BrandProfileInput {
   const out: BrandProfileInput = {};
   if (!body || typeof body !== "object") return out;
@@ -42,6 +60,13 @@ export function sanitizeBrandInput(body: unknown): BrandProfileInput {
     } else if (b[k] === null) {
       (out as Record<string, string | null>)[k] = null;
     }
+  }
+  const dsc = b.default_slide_count;
+  if (dsc === null || (typeof dsc === "string" && dsc.trim() === "")) {
+    out.default_slide_count = null;
+  } else if (dsc != null) {
+    const n = Math.trunc(Number(dsc));
+    if (Number.isFinite(n)) out.default_slide_count = Math.min(Math.max(n, 3), 10);
   }
   return out;
 }

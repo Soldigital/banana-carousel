@@ -3,6 +3,17 @@ export type SlideRole = "hook" | "context" | "value" | "story" | "cta";
 // "mix" = Bahasa Indonesia as the base, code-mixing common English terms.
 export type Language = "en" | "id" | "mix";
 
+// Username (@handle) watermark placement controls (Phase A / Feature 4).
+export type UsernamePosition =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
+export type UsernameSize = "small" | "medium" | "large";
+export type UsernameStyle = "plain" | "minimal" | "rounded" | "premium";
+
 export type CtaStyle =
   | "follow"
   | "save"
@@ -65,6 +76,13 @@ export interface GeneratorInput {
   brandProfileId?: string | null;
   logoMode?: LogoMode;
   logoOverridePath?: string | null;
+  // Phase A (V2) — optional brand-context + username-watermark controls. Absent
+  // ⇒ prompt unchanged from before.
+  toneOfVoice?: string;
+  secondaryColors?: string;
+  usernamePosition?: UsernamePosition;
+  usernameSize?: UsernameSize;
+  usernameStyle?: UsernameStyle;
 }
 
 export interface StylePreset {

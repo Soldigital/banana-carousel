@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, Loader2, RotateCcw } from "lucide-react";
+import { Sparkles, Loader2, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,11 @@ import { useUIStore } from "@/lib/store/ui-store";
 import { loadApiKey, hasApiKey } from "@/lib/storage/api-key";
 import { generateCarousel, GeminiError } from "@/lib/gemini/generate-carousel";
 import { generateViaGateway, GatewayError } from "@/lib/ai/client";
-import { USE_GATEWAY, USE_BRAND_PROFILES } from "@/lib/config/flags";
+import {
+  USE_GATEWAY,
+  USE_BRAND_PROFILES,
+  USE_HISTORY_V2,
+} from "@/lib/config/flags";
 import { track } from "@/lib/analytics/track";
 import { saveCarousel } from "@/lib/data/save-carousel";
 import type { CtaStyle, GeneratorInput, Language } from "@/types/carousel";
@@ -35,6 +39,46 @@ export function GeneratorForm() {
   const f = useFormStore();
   const openApiModal = useUIStore((s) => s.openApiKeyModal);
   const setHasKey = useUIStore((s) => s.setHasApiKey);
+
+  function buildInput(): GeneratorInput {
+    return {
+      title: f.title,
+      brandName: f.brandName,
+      topic: f.topic,
+      audience: f.audience,
+      goal: f.goal,
+      stylePresetId: f.stylePresetId,
+      customStyleNotes: f.customStyleNotes,
+      dominantColors: f.dominantColors,
+      slideCount: f.slideCount,
+      language: f.language,
+      ctaStyle: f.ctaStyle,
+      // Brand fields are only attached when the feature is on, so the prompt is
+      // byte-identical to today when the flag is off.
+      ...(USE_BRAND_PROFILES
+        ? {
+            brandProfileId: f.brandProfileId,
+            logoMode: f.logoMode,
+            logoOverridePath: f.logoOverridePath,
+            toneOfVoice: f.toneOfVoice,
+            secondaryColors: f.secondaryColors,
+            usernamePosition: f.usernamePosition,
+            usernameSize: f.usernameSize,
+            usernameStyle: f.usernameStyle,
+          }
+        : {}),
+    };
+  }
+
+  // Save the current form as a draft (input only, no output) into history.
+  async function handleSaveDraft() {
+    if (!f.topic.trim()) {
+      toast.error("Isi minimal topik dulu sebelum simpan draft.");
+      return;
+    }
+    await saveCarousel(buildInput(), null, "draft");
+    toast.success("Draft tersimpan di Riwayat.");
+  }
 
   async function handleGenerate() {
     if (!f.topic.trim()) {
@@ -57,28 +101,7 @@ export function GeneratorForm() {
     f.setError(null);
     f.setOutput(null);
 
-    const input: GeneratorInput = {
-      title: f.title,
-      brandName: f.brandName,
-      topic: f.topic,
-      audience: f.audience,
-      goal: f.goal,
-      stylePresetId: f.stylePresetId,
-      customStyleNotes: f.customStyleNotes,
-      dominantColors: f.dominantColors,
-      slideCount: f.slideCount,
-      language: f.language,
-      ctaStyle: f.ctaStyle,
-      // Brand fields are only attached when the feature is on, so the prompt is
-      // byte-identical to today when the flag is off.
-      ...(USE_BRAND_PROFILES
-        ? {
-            brandProfileId: f.brandProfileId,
-            logoMode: f.logoMode,
-            logoOverridePath: f.logoOverridePath,
-          }
-        : {}),
-    };
+    const input = buildInput();
 
     try {
       let output;
@@ -119,6 +142,9 @@ export function GeneratorForm() {
             : "Terjadi kesalahan tidak terduga.";
       f.setError(message);
       toast.error(message);
+      // Record the failed attempt in history (best-effort, input only). Does not
+      // touch the generation engine — runs after the error is already surfaced.
+      void saveCarousel(input, null, "failed");
       // Legacy invalid-key → reopen the browser key modal. In gateway mode the
       // error message already points the user to add keys in the dashboard.
       if (
@@ -288,6 +314,17 @@ export function GeneratorForm() {
           <RotateCcw className="size-4" />
           Reset
         </Button>
+        {USE_HISTORY_V2 && (
+          <Button
+            size="xl"
+            variant="outline"
+            onClick={handleSaveDraft}
+            disabled={f.isGenerating}
+          >
+            <Save className="size-4" />
+            Simpan Draft
+          </Button>
+        )}
       </div>
 
       {f.error && !f.isGenerating && (

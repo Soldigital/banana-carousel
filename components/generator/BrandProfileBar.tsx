@@ -175,6 +175,86 @@ export function BrandProfileBar() {
           onChange={onUpload}
         />
       </div>
+
+      {/* Username (@watermark) position control — overrides per project. */}
+      <div className="grid grid-cols-3 gap-2">
+        <UsernameSelect
+          label="Posisi @"
+          value={f.usernamePosition ?? ""}
+          opts={POS_OPTS}
+          onChange={(v) =>
+            setField("usernamePosition", (v || undefined) as typeof f.usernamePosition)
+          }
+        />
+        <UsernameSelect
+          label="Ukuran"
+          value={f.usernameSize ?? ""}
+          opts={SIZE_OPTS}
+          onChange={(v) =>
+            setField("usernameSize", (v || undefined) as typeof f.usernameSize)
+          }
+        />
+        <UsernameSelect
+          label="Gaya"
+          value={f.usernameStyle ?? ""}
+          opts={USTYLE_OPTS}
+          onChange={(v) =>
+            setField("usernameStyle", (v || undefined) as typeof f.usernameStyle)
+          }
+        />
+      </div>
     </section>
+  );
+}
+
+const POS_OPTS = [
+  ["", "Default"],
+  ["top-left", "Atas Kiri"],
+  ["top-center", "Atas Tengah"],
+  ["top-right", "Atas Kanan"],
+  ["bottom-left", "Bawah Kiri"],
+  ["bottom-center", "Bawah Tengah"],
+  ["bottom-right", "Bawah Kanan"],
+];
+const SIZE_OPTS = [
+  ["", "Default"],
+  ["small", "Kecil"],
+  ["medium", "Sedang"],
+  ["large", "Besar"],
+];
+const USTYLE_OPTS = [
+  ["", "Default"],
+  ["plain", "Plain"],
+  ["minimal", "Minimal"],
+  ["rounded", "Rounded"],
+  ["premium", "Premium"],
+];
+
+function UsernameSelect({
+  label,
+  value,
+  opts,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  opts: string[][];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-[10px] text-muted-foreground">{label}</Label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="flex h-9 w-full rounded-lg border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {opts.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }

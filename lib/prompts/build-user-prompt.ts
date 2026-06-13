@@ -52,8 +52,34 @@ export function buildUserPrompt(input: GeneratorInput): string {
     wantWatermark && (input.logoMode === "default" || input.logoMode === "custom")
       ? ` If a brand logo image is available, place the actual logo (small, low-opacity, in the same corner) instead of rendering the brand name as text.`
       : "";
-  const brandWatermark = wantWatermark
-    ? `\n- BRAND WATERMARK: Place a small, subtle brand watermark "${brand}" in a consistent corner (e.g. bottom-left) of EVERY slide's visual_prompt. It must be tasteful and unobtrusive — small, low-opacity, never covering the main subject or headline. Mention this watermark explicitly inside each slide's visual_prompt.${logoLine}`
+  // Username-position control (Phase A). When NONE of the controls are set the
+  // watermark text is byte-identical to before; otherwise it's parameterized.
+  const STYLE_TEXT: Record<NonNullable<GeneratorInput["usernameStyle"]>, string> = {
+    plain: "plain-text",
+    minimal: "minimal-label",
+    rounded: "rounded-badge",
+    premium: "premium-badge",
+  };
+  const hasUsernameCtrl =
+    !!input.usernamePosition || !!input.usernameSize || !!input.usernameStyle;
+  let brandWatermark = "";
+  if (wantWatermark) {
+    if (hasUsernameCtrl) {
+      const pos = input.usernamePosition ?? "bottom-left";
+      const size = input.usernameSize ?? "small";
+      const styl = STYLE_TEXT[input.usernameStyle ?? "plain"];
+      brandWatermark = `\n- BRAND WATERMARK: Place a ${size}, ${styl} brand/username watermark "${brand}" at the ${pos} corner of EVERY slide's visual_prompt. It must be tasteful and unobtrusive — low-opacity, never covering the main subject or headline. Mention this watermark explicitly inside each slide's visual_prompt.${logoLine}`;
+    } else {
+      brandWatermark = `\n- BRAND WATERMARK: Place a small, subtle brand watermark "${brand}" in a consistent corner (e.g. bottom-left) of EVERY slide's visual_prompt. It must be tasteful and unobtrusive — small, low-opacity, never covering the main subject or headline. Mention this watermark explicitly inside each slide's visual_prompt.${logoLine}`;
+    }
+  }
+
+  // Additive brand-context lines (only when present ⇒ prompt unchanged if absent).
+  const toneLine = input.toneOfVoice?.trim()
+    ? `\n- Brand tone of voice: ${input.toneOfVoice.trim()}`
+    : "";
+  const secondaryLine = input.secondaryColors?.trim()
+    ? `\n- Secondary brand colors: ${input.secondaryColors.trim()} (use as accents alongside the dominant palette)`
     : "";
 
   return `Generate a complete carousel structure for the following creator brief.
@@ -65,7 +91,7 @@ export function buildUserPrompt(input: GeneratorInput): string {
 - Goal of the content: ${input.goal}
 - Number of slides: ${input.slideCount} (slide 1 = hook, slide ${input.slideCount} = cta, slides in between = value/story)
 - Output language for headlines & body: ${langLabel}${mixRule}
-- CTA style: ${input.ctaStyle} (${CTA_LABELS[input.ctaStyle] ?? input.ctaStyle})
+- CTA style: ${input.ctaStyle} (${CTA_LABELS[input.ctaStyle] ?? input.ctaStyle})${toneLine}
 
 # Style Direction
 - Selected visual preset: ${preset.name}
@@ -73,7 +99,7 @@ export function buildUserPrompt(input: GeneratorInput): string {
 - Preset mood: ${preset.mood}
 - Preset color hints: ${preset.colorHints.join(", ")}
 - Preset visual instruction (anchor every visual_prompt to this): ${preset.visualInstruction}
-- Preset typography hint: ${preset.typographyHint}${dominantColors}${customNotes}${brandWatermark}
+- Preset typography hint: ${preset.typographyHint}${dominantColors}${secondaryLine}${customNotes}${brandWatermark}
 
 # Requirements
 1. Produce exactly ${input.slideCount} slides in the \`slides\` array.

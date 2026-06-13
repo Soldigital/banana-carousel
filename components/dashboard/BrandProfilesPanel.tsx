@@ -47,6 +47,15 @@ type Draft = {
   brand_color: string;
   default_style_preset_id: string;
   logo_path: string | null;
+  // Phase A additions
+  secondary_color: string;
+  target_audience: string;
+  tone_of_voice: string;
+  default_language: string;
+  default_slide_count: string; // kept as string for the input; sent as-is
+  username_position: string;
+  username_size: string;
+  username_style: string;
 };
 
 const EMPTY_DRAFT: Draft = {
@@ -58,6 +67,14 @@ const EMPTY_DRAFT: Draft = {
   brand_color: "",
   default_style_preset_id: "",
   logo_path: null,
+  secondary_color: "",
+  target_audience: "",
+  tone_of_voice: "",
+  default_language: "",
+  default_slide_count: "",
+  username_position: "",
+  username_size: "",
+  username_style: "",
 };
 
 function toDraft(p: BrandProfile): Draft {
@@ -70,8 +87,46 @@ function toDraft(p: BrandProfile): Draft {
     brand_color: p.brand_color ?? "",
     default_style_preset_id: p.default_style_preset_id ?? "",
     logo_path: p.logo_path ?? null,
+    secondary_color: p.secondary_color ?? "",
+    target_audience: p.target_audience ?? "",
+    tone_of_voice: p.tone_of_voice ?? "",
+    default_language: p.default_language ?? "",
+    default_slide_count:
+      p.default_slide_count != null ? String(p.default_slide_count) : "",
+    username_position: p.username_position ?? "",
+    username_size: p.username_size ?? "",
+    username_style: p.username_style ?? "",
   };
 }
+
+const POS_OPTS = [
+  ["", "—"],
+  ["top-left", "Atas Kiri"],
+  ["top-center", "Atas Tengah"],
+  ["top-right", "Atas Kanan"],
+  ["bottom-left", "Bawah Kiri"],
+  ["bottom-center", "Bawah Tengah"],
+  ["bottom-right", "Bawah Kanan"],
+];
+const SIZE_OPTS = [
+  ["", "—"],
+  ["small", "Kecil"],
+  ["medium", "Sedang"],
+  ["large", "Besar"],
+];
+const USTYLE_OPTS = [
+  ["", "—"],
+  ["plain", "Plain"],
+  ["minimal", "Minimal Label"],
+  ["rounded", "Rounded Badge"],
+  ["premium", "Premium Badge"],
+];
+const LANG_OPTS = [
+  ["", "—"],
+  ["id", "Indonesia"],
+  ["en", "English"],
+  ["mix", "Kombinasi (ID/EN)"],
+];
 
 export function BrandProfilesPanel() {
   const [profiles, setProfiles] = React.useState<BrandProfile[]>([]);
@@ -256,6 +311,69 @@ export function BrandProfilesPanel() {
                 ))}
               </select>
             </Field>
+            <Field label="Warna Sekunder">
+              <Input
+                value={draft.secondary_color}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, secondary_color: e.target.value }))
+                }
+                placeholder="Putih, abu muda"
+              />
+            </Field>
+            <Field label="Target Audience">
+              <Input
+                value={draft.target_audience}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, target_audience: e.target.value }))
+                }
+                placeholder="Anak muda 18-30, urban"
+              />
+            </Field>
+            <Field label="Tone of Voice">
+              <Input
+                value={draft.tone_of_voice}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, tone_of_voice: e.target.value }))
+                }
+                placeholder="Santai, kredibel, memotivasi"
+              />
+            </Field>
+            <DraftSelect
+              label="Bahasa Default"
+              value={draft.default_language}
+              opts={LANG_OPTS}
+              onChange={(v) => setDraft((d) => ({ ...d, default_language: v }))}
+            />
+            <Field label="Jumlah Slide Default">
+              <Input
+                type="number"
+                min={3}
+                max={10}
+                value={draft.default_slide_count}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, default_slide_count: e.target.value }))
+                }
+                placeholder="7"
+              />
+            </Field>
+            <DraftSelect
+              label="Posisi Username"
+              value={draft.username_position}
+              opts={POS_OPTS}
+              onChange={(v) => setDraft((d) => ({ ...d, username_position: v }))}
+            />
+            <DraftSelect
+              label="Ukuran Username"
+              value={draft.username_size}
+              opts={SIZE_OPTS}
+              onChange={(v) => setDraft((d) => ({ ...d, username_size: v }))}
+            />
+            <DraftSelect
+              label="Gaya Username"
+              value={draft.username_style}
+              opts={USTYLE_OPTS}
+              onChange={(v) => setDraft((d) => ({ ...d, username_style: v }))}
+            />
           </div>
 
           {/* Default logo */}
@@ -394,5 +512,33 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {children}
     </div>
+  );
+}
+
+function DraftSelect({
+  label,
+  value,
+  opts,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  opts: string[][];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <Field label={label}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="flex h-11 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+      >
+        {opts.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </select>
+    </Field>
   );
 }

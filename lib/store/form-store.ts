@@ -6,6 +6,9 @@ import type {
   Language,
   CtaStyle,
   LogoMode,
+  UsernamePosition,
+  UsernameSize,
+  UsernameStyle,
 } from "@/types/carousel";
 import type { BrandProfile } from "@/types/db";
 
@@ -18,6 +21,19 @@ const CTA_VALUES: CtaStyle[] = [
   "link",
   "engagement",
 ];
+const LANG_VALUES: Language[] = ["id", "en", "mix"];
+const POS_VALUES: UsernamePosition[] = [
+  "top-left",
+  "top-center",
+  "top-right",
+  "bottom-left",
+  "bottom-center",
+  "bottom-right",
+];
+const SIZE_VALUES: UsernameSize[] = ["small", "medium", "large"];
+const USTYLE_VALUES: UsernameStyle[] = ["plain", "minimal", "rounded", "premium"];
+const pick = <T>(v: unknown, allowed: T[], fallback: T): T =>
+  allowed.includes(v as T) ? (v as T) : fallback;
 
 interface FormState extends GeneratorInput {
   isGenerating: boolean;
@@ -35,7 +51,7 @@ interface FormState extends GeneratorInput {
   setOutput: (o: CarouselOutput | null) => void;
   setError: (e: string | null) => void;
   selectBrandProfile: (profile: BrandProfile | null) => void;
-  loadFromHistory: (input: GeneratorInput, output: CarouselOutput) => void;
+  loadFromHistory: (input: GeneratorInput, output: CarouselOutput | null) => void;
   reset: () => void;
 }
 
@@ -46,6 +62,12 @@ const DEFAULT_BRAND = {
   brandProfileId: null as string | null,
   logoMode: "default" as LogoMode,
   logoOverridePath: null as string | null,
+  // Phase A: undefined ⇒ prompt uses today's default watermark text (byte-identical).
+  toneOfVoice: undefined as string | undefined,
+  secondaryColors: undefined as string | undefined,
+  usernamePosition: undefined as UsernamePosition | undefined,
+  usernameSize: undefined as UsernameSize | undefined,
+  usernameStyle: undefined as UsernameStyle | undefined,
 };
 
 const DEFAULT_INPUT: GeneratorInput = {
@@ -84,12 +106,41 @@ export const useFormStore = create<FormState>()(
           return;
         }
         const cta = profile.cta_style as CtaStyle | null;
+        const sc =
+          profile.default_slide_count != null
+            ? Math.min(Math.max(profile.default_slide_count, 3), 10)
+            : null;
         set((s) => ({
           brandProfileId: profile.id,
           brandName: profile.instagram_username || profile.name || s.brandName,
           dominantColors: profile.brand_color || s.dominantColors,
           stylePresetId: profile.default_style_preset_id || s.stylePresetId,
           ctaStyle: cta && CTA_VALUES.includes(cta) ? cta : s.ctaStyle,
+          // Phase A auto-fills (only when the profile provides a value).
+          audience: profile.target_audience || s.audience,
+          language: profile.default_language
+            ? pick(profile.default_language, LANG_VALUES, s.language)
+            : s.language,
+          slideCount: sc ?? s.slideCount,
+          toneOfVoice: profile.tone_of_voice || undefined,
+          secondaryColors: profile.secondary_color || undefined,
+          usernamePosition: profile.username_position
+            ? pick<UsernamePosition | undefined>(
+                profile.username_position,
+                POS_VALUES,
+                undefined,
+              )
+            : s.usernamePosition,
+          usernameSize: profile.username_size
+            ? pick<UsernameSize | undefined>(profile.username_size, SIZE_VALUES, undefined)
+            : s.usernameSize,
+          usernameStyle: profile.username_style
+            ? pick<UsernameStyle | undefined>(
+                profile.username_style,
+                USTYLE_VALUES,
+                undefined,
+              )
+            : s.usernameStyle,
           logoMode: "default",
           logoOverridePath: null,
         }));
@@ -129,6 +180,11 @@ export const useFormStore = create<FormState>()(
         brandProfileId: s.brandProfileId,
         logoMode: s.logoMode,
         logoOverridePath: s.logoOverridePath,
+        toneOfVoice: s.toneOfVoice,
+        secondaryColors: s.secondaryColors,
+        usernamePosition: s.usernamePosition,
+        usernameSize: s.usernameSize,
+        usernameStyle: s.usernameStyle,
       }),
     },
   ),

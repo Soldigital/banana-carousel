@@ -45,6 +45,15 @@ export interface BrandProfile {
   brand_color: string | null;
   default_style_preset_id: string | null;
   logo_path: string | null;
+  // Phase A (V2) additions — all nullable, backward compatible.
+  secondary_color: string | null;
+  target_audience: string | null;
+  tone_of_voice: string | null;
+  default_language: string | null;
+  default_slide_count: number | null;
+  username_position: string | null;
+  username_size: string | null;
+  username_style: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -56,7 +65,7 @@ export interface CarouselRecord {
   user_id: string;
   title: string | null;
   input: GeneratorInput;
-  output: CarouselOutput;
+  output: CarouselOutput | null; // null for failed/draft rows (input-only)
   created_at: string;
   // Added in migration 0007 (history management). Optional so older code paths
   // and the existing client-side insert remain valid without specifying them.
