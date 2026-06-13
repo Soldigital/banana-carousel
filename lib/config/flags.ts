@@ -15,3 +15,9 @@ export const USE_HISTORY_V2 = process.env.NEXT_PUBLIC_USE_HISTORY_V2 === "on";
 // exactly as today (free-text brand name only).
 export const USE_BRAND_PROFILES =
   process.env.NEXT_PUBLIC_USE_BRAND_PROFILES === "on";
+
+// Pricing v2 (V2 Phase B): tiers/Founding counter/Founder Wall pricing UI. When
+// off, the original single "Rp99.000 Lifetime" buy flow shows. The DB migration
+// (0010) is additive and harmless regardless of this flag; entitlement/access is
+// unchanged either way.
+export const USE_PRICING_V2 = process.env.NEXT_PUBLIC_USE_PRICING_V2 === "on";

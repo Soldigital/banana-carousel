@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { isOwnerEmail } from "@/lib/config/app";
+import type { Tier } from "@/types/db";
 
 export interface EntitlementStatus {
   loggedIn: boolean;
@@ -11,6 +12,9 @@ export interface EntitlementStatus {
   banned: boolean;
   email: string | null;
   accessCode: string | null;
+  // Phase B label (does not affect `entitled` in Phase B).
+  tier: Tier;
+  founderNumber: number | null;
 }
 
 const LOGGED_OUT: EntitlementStatus = {
@@ -21,6 +25,8 @@ const LOGGED_OUT: EntitlementStatus = {
   banned: false,
   email: null,
   accessCode: null,
+  tier: "free",
+  founderNumber: null,
 };
 
 // Resolves the current user's entitlement using the RLS-scoped server client.
@@ -34,11 +40,34 @@ export async function getEntitlement(): Promise<EntitlementStatus> {
   } = await supabase.auth.getUser();
   if (!user) return LOGGED_OUT;
 
-  const { data: profile } = await supabase
+  // Try the full select (with Phase B tier columns); fall back to the original
+  // columns if migration 0010 hasn't been applied yet, so the access gate can
+  // never break on deploy/migration ordering.
+  let profile:
+    | {
+        is_pro?: boolean;
+        is_admin?: boolean;
+        access_code?: string | null;
+        banned?: boolean;
+        tier?: Tier;
+        founder_number?: number | null;
+      }
+    | null = null;
+  const full = await supabase
     .from("profiles")
-    .select("is_pro, is_admin, access_code, banned")
+    .select("is_pro, is_admin, access_code, banned, tier, founder_number")
     .eq("id", user.id)
     .maybeSingle();
+  if (full.error) {
+    const basic = await supabase
+      .from("profiles")
+      .select("is_pro, is_admin, access_code, banned")
+      .eq("id", user.id)
+      .maybeSingle();
+    profile = basic.data;
+  } else {
+    profile = full.data;
+  }
 
   const owner = isOwnerEmail(user.email);
   const banned = !!profile?.banned;
@@ -50,5 +79,7 @@ export async function getEntitlement(): Promise<EntitlementStatus> {
     banned,
     email: user.email ?? null,
     accessCode: profile?.access_code ?? null,
+    tier: profile?.tier ?? (profile?.is_pro ? "lifetime" : "free"),
+    founderNumber: profile?.founder_number ?? null,
   };
 }

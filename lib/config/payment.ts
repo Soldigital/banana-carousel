@@ -1,7 +1,14 @@
 // Single source of truth for price + payment display config.
 
-export const PRICE = 99000; // Rp99.000 lifetime (normal Rp199.000)
+export const PRICE = 99000; // Rp99.000 lifetime (legacy single price)
 export const PRODUCT_NAME = "Banana Carousel — Lifetime Access";
+
+// V2 Phase B — Founding Member pricing. First 100 members pay the founding
+// price (lifetime); after the 100 slots are taken the lifetime price applies.
+export const FOUNDING_PRICE = 99000; // Rp99.000 — first 100
+export const LIFETIME_PRICE = 299000; // Rp299.000 — after founding sold out
+export const FOUNDING_CAP = 100;
+export const FOUNDING_PRODUCT_NAME = "Banana Carousel — Founding Member (Lifetime)";
 
 export function formatIDR(amount: number): string {
   return new Intl.NumberFormat("id-ID", {

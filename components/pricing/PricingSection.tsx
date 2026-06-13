@@ -3,6 +3,8 @@
 import { motion } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
 import { BuyButton } from "./BuyButton";
+import { FoundingBanner } from "./FoundingBanner";
+import { USE_PRICING_V2 } from "@/lib/config/flags";
 
 const BENEFITS = [
   "Akses generator selamanya (lifetime)",
@@ -46,6 +48,8 @@ export function PricingSection() {
         <p className="mt-2 text-center text-sm text-banana font-semibold">
           Hemat Rp100.000 — lifetime, sekali bayar
         </p>
+
+        {USE_PRICING_V2 && <FoundingBanner />}
 
         <ul className="mt-6 space-y-2.5">
           {BENEFITS.map((b) => (

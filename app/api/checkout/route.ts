@@ -3,6 +3,8 @@ import { createPayment } from "@/lib/ipaymu/client";
 import { signRef } from "@/lib/license/token";
 import { ensureAccountForEmail } from "@/lib/auth/account";
 import { PRICE, PRODUCT_NAME } from "@/lib/config/payment";
+import { getFoundingStatus } from "@/lib/data/founding";
+import { USE_PRICING_V2 } from "@/lib/config/flags";
 import { rateLimit, clientIp } from "@/lib/security/ratelimit";
 
 export const runtime = "nodejs";
@@ -41,9 +43,19 @@ export async function POST(req: Request) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin;
     const referenceId = signRef(cleanEmail);
 
+    // V2: price is computed server-side from the live Founding count (never
+    // trusted from the client). When pricing v2 is off, the legacy flat price.
+    let price = PRICE;
+    let product = PRODUCT_NAME;
+    if (USE_PRICING_V2) {
+      const f = await getFoundingStatus();
+      price = f.price;
+      product = f.productName;
+    }
+
     const { url } = await createPayment({
-      product: PRODUCT_NAME,
-      price: PRICE,
+      product,
+      price,
       referenceId,
       buyerName: String(name ?? "").trim() || cleanEmail.split("@")[0],
       buyerEmail: cleanEmail,

@@ -7,6 +7,9 @@ import type { CarouselOutput, GeneratorInput } from "./carousel";
 export type OrderMethod = "ipaymu" | "manual" | "promo";
 export type OrderStatus = "pending" | "paid" | "approved" | "rejected";
 
+export type Tier = "free" | "founding" | "lifetime" | "pro_annual";
+export type FounderDisplay = "name" | "username" | "number";
+
 export interface Profile {
   id: string; // = auth.users.id
   email: string;
@@ -15,6 +18,12 @@ export interface Profile {
   is_pro: boolean;
   access_code: string | null;
   created_at: string;
+  // Phase B (V2) — additive; entitlement still gated by is_pro.
+  tier: Tier;
+  tier_expires_at: string | null;
+  founder_number: number | null;
+  founder_alias: string | null;
+  founder_display: FounderDisplay;
 }
 
 export interface Order {

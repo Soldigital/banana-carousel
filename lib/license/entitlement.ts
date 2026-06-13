@@ -114,6 +114,34 @@ async function setProfilePro(
   if (error) {
     console.error("[entitlement] setProfilePro failed", email, error.message);
     void captureError(error, { scope: "setProfilePro", email });
+    return;
+  }
+  await assignTier(admin, email);
+}
+
+// Assign a paid tier label (Phase B). Atomically claims a Founding slot (1..100)
+// via the DB function; if full, labels the buyer 'lifetime'. Idempotent and
+// fully best-effort — never blocks the grant (is_pro already set above). No-ops
+// gracefully if migration 0010 hasn't been applied.
+async function assignTier(
+  admin: ReturnType<typeof createAdminClient>,
+  email: string,
+): Promise<void> {
+  try {
+    const { data: num, error } = await admin.rpc("claim_founding_number", {
+      p_email: email,
+    });
+    if (error) return; // function missing (pre-migration) — skip silently
+    if (num == null) {
+      // Slots full → label as lifetime, but never downgrade an existing founder.
+      await admin
+        .from("profiles")
+        .update({ tier: "lifetime" })
+        .eq("email", email)
+        .neq("tier", "founding");
+    }
+  } catch {
+    /* best-effort */
   }
 }
 

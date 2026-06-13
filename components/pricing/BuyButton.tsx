@@ -15,6 +15,8 @@ import { Button, type ButtonProps } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { track } from "@/lib/analytics/track";
+import { USE_PRICING_V2 } from "@/lib/config/flags";
+import { FOUNDING_PRICE, formatIDR } from "@/lib/config/payment";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -25,12 +27,23 @@ interface Props extends Omit<ButtonProps, "onClick"> {
 // Self-contained: a button that opens a small dialog to collect the buyer's
 // email, then creates an iPaymu payment session and redirects to the payment
 // page. Used both on the landing pricing section and the locked generator.
+// When pricing v2 is on, it shows the live Founding/Lifetime price.
 export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
   const [whatsapp, setWhatsapp] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+  const [price, setPrice] = React.useState(FOUNDING_PRICE);
+
+  React.useEffect(() => {
+    if (!USE_PRICING_V2) return;
+    fetch("/api/founding")
+      .then((r) => r.json())
+      .then((d) => typeof d.price === "number" && setPrice(d.price))
+      .catch(() => {});
+  }, []);
+  const priceLabel = formatIDR(price);
 
   async function handleCheckout() {
     const clean = email.trim().toLowerCase();
@@ -78,8 +91,8 @@ export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
             <DialogTitle className="text-xl">Beli Akses Lifetime</DialogTitle>
             <DialogDescription>
               Bayar sekali{" "}
-              <span className="font-semibold text-foreground">Rp99.000</span>,
-              akses selamanya. License key dikirim ke email Anda & langsung
+              <span className="font-semibold text-foreground">{priceLabel}</span>
+              , akses selamanya. License key dikirim ke email Anda & langsung
               aktif setelah bayar.
             </DialogDescription>
           </DialogHeader>
@@ -139,7 +152,7 @@ export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
                   Mengarahkan...
                 </>
               ) : (
-                "Lanjut Bayar Rp99.000"
+                `Lanjut Bayar ${priceLabel}`
               )}
             </Button>
           </DialogFooter>

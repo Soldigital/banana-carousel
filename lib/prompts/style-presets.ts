@@ -9,6 +9,12 @@ export const STYLE_CATEGORIES: string[] = [
   "Futuristic & Digital",
   "Creative & Illustration",
   "Artistic & Craft",
+  // V2 Phase B — premium library additions (available to all paid users).
+  "Business & Personal Brand",
+  "Education",
+  "Islamic",
+  "Startup & Tech",
+  "Minimalist",
 ];
 
 // NOTE on backward-compatibility: `stylePresetId` is stored on every generated
@@ -357,6 +363,92 @@ export const STYLE_PRESETS: StylePreset[] = [
       "Japandi aesthetic fusing Japanese minimalism and Scandinavian simplicity, calm and balanced compositions, natural earthy palette (warm beige, clay, muted sage, charcoal), organic materials like wood, linen and ceramic, soft diffused light, generous negative space, timeless and serene.",
     typographyHint:
       "Headlines: Noto Serif / Cormorant Garamond. Body: Inter / Manrope. Style: elegant serif + minimalist sans-serif.",
+  },
+
+  // ─────────────── Business & Personal Brand (V2 premium) ───────────────
+  {
+    id: "business-clean-authority",
+    name: "Clean Authority",
+    description:
+      "Crisp, confident corporate-clean look — white space, restrained accent color, trustworthy and modern.",
+    category: "Business & Personal Brand",
+    bestFor:
+      "Coaches, consultants, B2B, personal brands, LinkedIn-style thought leadership.",
+    gradient: "linear-gradient(135deg, #0F172A 0%, #2563EB 100%)",
+    mood: "professional, confident, trustworthy, clean",
+    colorHints: ["#0F172A", "#2563EB", "#F8FAFC", "#E2E8F0"],
+    visualInstruction:
+      "Clean professional business aesthetic, generous white space, one restrained accent color (deep blue), crisp grid layouts, subtle soft shadows, confident and authoritative mood, modern flat illustrations or clean photography, premium-but-approachable, ultra sharp, 8k.",
+    typographyHint:
+      "Headlines: Inter / Manrope / Söhne (geometric sans, bold). Body: Inter / Source Sans. Strong hierarchy, tight tracking on headlines.",
+  },
+  // ───────────────────────── Education (V2 premium) ─────────────────────
+  {
+    id: "education-explainer",
+    name: "Bright Explainer",
+    description:
+      "Friendly educational style — clear diagrams, highlighted keywords, approachable colors that aid retention.",
+    category: "Education",
+    bestFor:
+      "Educators, course creators, how-to & tips content, study/tutorial carousels.",
+    gradient: "linear-gradient(135deg, #FEF3C7 0%, #10B981 100%)",
+    mood: "friendly, clear, energetic, approachable",
+    colorHints: ["#10B981", "#FBBF24", "#1F2937", "#FFFFFF"],
+    visualInstruction:
+      "Friendly educational explainer aesthetic, clean flat vector illustrations and simple diagrams, highlighted keywords with marker/underline accents, generous readable spacing, cheerful but legible palette, icons supporting each point, approachable and trustworthy, crisp 8k.",
+    typographyHint:
+      "Headlines: Poppins / Nunito (rounded friendly sans, bold). Body: Inter. Use highlight/marker accents on key words.",
+  },
+  // ───────────────────────── Islamic (V2 premium) ──────────────────────
+  {
+    id: "islamic-elegant",
+    name: "Islamic Elegant",
+    description:
+      "Refined Islamic aesthetic — geometric arabesque patterns, calm emerald & gold, dignified and serene.",
+    category: "Islamic",
+    bestFor:
+      "Dakwah, kajian, Islamic brands, motivational & spiritual content, Ramadan campaigns.",
+    gradient: "linear-gradient(135deg, #064E3B 0%, #C9A227 100%)",
+    mood: "serene, dignified, spiritual, elegant",
+    colorHints: ["#064E3B", "#C9A227", "#F5F5DC", "#FFFFFF"],
+    visualInstruction:
+      "Elegant modern Islamic aesthetic, subtle geometric arabesque and girih patterns as accents (never overwhelming), calm emerald green, gold and cream palette, soft light, dignified and serene mood, generous negative space, tasteful ornamental borders, respectful and premium, crisp 8k. Avoid depicting faces of religious figures.",
+    typographyHint:
+      "Headlines: elegant high-contrast serif or refined geometric sans (Cormorant, Poppins). Latin script for id/en; optional tasteful Arabic calligraphy accent. Calm, generous spacing.",
+  },
+  // ───────────────────────── Startup & Tech (V2 premium) ───────────────
+  {
+    id: "startup-gradient",
+    name: "Startup Gradient",
+    description:
+      "Modern SaaS/startup vibe — vivid gradients, glassmorphism, bold geometric shapes, energetic and current.",
+    category: "Startup & Tech",
+    bestFor:
+      "Startups, SaaS, tech products, product launches, founders & growth content.",
+    gradient: "linear-gradient(135deg, #6D28D9 0%, #EC4899 100%)",
+    mood: "energetic, modern, bold, optimistic",
+    colorHints: ["#6D28D9", "#EC4899", "#0EA5E9", "#0B1020"],
+    visualInstruction:
+      "Modern startup/SaaS aesthetic, vivid multi-stop gradients, glassmorphism cards with soft blur, bold geometric shapes and abstract 3D blobs, clean UI-inspired layouts, energetic and optimistic, high contrast, crisp vector + subtle glow, 8k.",
+    typographyHint:
+      "Headlines: Space Grotesk / Satoshi / Inter (modern geometric sans, bold). Body: Inter. Tight, confident hierarchy.",
+  },
+  // ───────────────────────── Minimalist (V2 premium) ───────────────────
+  {
+    id: "minimal-mono",
+    name: "Minimal Mono",
+    description:
+      "Ultra-minimal monochrome — one accent, massive white space, calm and premium restraint.",
+    category: "Minimalist",
+    bestFor:
+      "Premium minimalist brands, quotes, design-led personal brands, calm aesthetics.",
+    gradient: "linear-gradient(135deg, #111111 0%, #9CA3AF 100%)",
+    mood: "calm, refined, minimal, premium",
+    colorHints: ["#111111", "#FFFFFF", "#9CA3AF", "#F5F5F5"],
+    visualInstruction:
+      "Ultra-minimalist monochrome aesthetic, massive negative space, a single subtle accent, restrained grayscale palette, perfectly aligned grid, one focal element per slide, calm and premium, subtle fine-line details, gallery-like composition, crisp 8k.",
+    typographyHint:
+      "Headlines: Helvetica Neue / Söhne / Neue Haas (clean neutral sans). Body: same family. Big type, lots of air, precise alignment.",
   },
 
   // ───────────────────────── Retired (hidden) ──────────────────────────

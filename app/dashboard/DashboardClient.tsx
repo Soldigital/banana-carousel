@@ -26,10 +26,12 @@ import {
 import { ProviderKeysPanel } from "@/components/api-key/ProviderKeysPanel";
 import { HistoryPanel } from "@/components/history/HistoryPanel";
 import { BrandProfilesPanel } from "@/components/dashboard/BrandProfilesPanel";
+import { FounderControl } from "@/components/dashboard/FounderControl";
 import {
   USE_GATEWAY,
   USE_HISTORY_V2,
   USE_BRAND_PROFILES,
+  USE_PRICING_V2,
 } from "@/lib/config/flags";
 import { createClient } from "@/lib/supabase/client";
 import { useFormStore } from "@/lib/store/form-store";
@@ -141,6 +143,11 @@ export function DashboardClient({
           </div>
         )}
       </section>
+
+      {/* Founding Member control (Phase B) */}
+      {USE_PRICING_V2 && status.founderNumber != null && (
+        <FounderControl founderNumber={status.founderNumber} />
+      )}
 
       {/* API Keys — gateway (multi-provider) panel, or legacy single-key */}
       {USE_GATEWAY ? (
