@@ -102,3 +102,8 @@ create or replace view public.carousel_list
     output ->> 'carousel_title' as carousel_title,
     search_text
   from public.carousels;
+
+-- PostgREST queries the view as the `authenticated` role; grant it SELECT so the
+-- per-user history API can read the view. security_invoker=on means the base
+-- table's RLS (carousels_all_own) still restricts results to the caller's rows.
+grant select on public.carousel_list to authenticated;
