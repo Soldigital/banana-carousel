@@ -1,6 +1,7 @@
 export type SlideRole = "hook" | "context" | "value" | "story" | "cta";
 
-export type Language = "en" | "id";
+// "mix" = Bahasa Indonesia as the base, code-mixing common English terms.
+export type Language = "en" | "id" | "mix";
 
 export type CtaStyle =
   | "follow"

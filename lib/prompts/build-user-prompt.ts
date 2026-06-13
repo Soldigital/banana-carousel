@@ -11,8 +11,22 @@ const CTA_LABELS: Record<string, string> = {
   engagement: "Engagement maksimal (mix follow + save + share)",
 };
 
+// Short label injected wherever the output language is referenced.
+function languageLabel(lang: GeneratorInput["language"]): string {
+  if (lang === "en") return "English";
+  if (lang === "mix")
+    return "Bahasa Indonesia (utama) dengan campuran istilah English yang umum";
+  return "Bahasa Indonesia";
+}
+
 export function buildUserPrompt(input: GeneratorInput): string {
   const preset = getPresetById(input.stylePresetId);
+  const langLabel = languageLabel(input.language);
+  // One detailed rule, added only for the mixed-language mode.
+  const mixRule =
+    input.language === "mix"
+      ? `\n- LANGUAGE MIX RULE: Write headline, body, hook, cta, carousel_title and caption in natural Bahasa Indonesia as the BASE language. Use English ONLY for words/phrases that Indonesian audiences commonly say in English or that sound awkward when translated (e.g. "mindset", "value", "deadline", "self-reward", "branding", "hustle", "insight", "skill"). Keep an Indonesian sentence structure and flow — do NOT write full English sentences and do NOT force-translate those common terms into stiff formal Indonesian. This is natural code-mixing, the way urban Indonesian creators actually speak.`
+      : "";
 
   const customNotes =
     input.customStyleNotes?.trim()
@@ -50,7 +64,7 @@ export function buildUserPrompt(input: GeneratorInput): string {
 - Target audience: ${input.audience}
 - Goal of the content: ${input.goal}
 - Number of slides: ${input.slideCount} (slide 1 = hook, slide ${input.slideCount} = cta, slides in between = value/story)
-- Output language for headlines & body: ${input.language === "id" ? "Bahasa Indonesia" : "English"}
+- Output language for headlines & body: ${langLabel}${mixRule}
 - CTA style: ${input.ctaStyle} (${CTA_LABELS[input.ctaStyle] ?? input.ctaStyle})
 
 # Style Direction
@@ -66,8 +80,8 @@ export function buildUserPrompt(input: GeneratorInput): string {
 2. Strictly follow the storytelling arc (hook → context/value → peak insight → CTA).
 3. Maintain perfect visual consistency across all slides (same palette, same lighting language, same typography family).
 4. Every visual_prompt is in ENGLISH, ultra-detailed, ready for Gemini Imagen.
-5. Headlines and body in ${input.language === "id" ? "Bahasa Indonesia" : "English"} — punchy, scroll-stopping, audience-appropriate.
+5. Headlines and body in ${langLabel} — punchy, scroll-stopping, audience-appropriate.
 6. The \`gemini_ready_prompt\` field is the single most important deliverable — it must be a 600-1500 word, structured, paste-ready master prompt.
-7. The \`caption\` field must be a ready-to-paste Instagram post caption in ${input.language === "id" ? "Bahasa Indonesia" : "English"}: a scroll-stopping hook line, 2-4 lines of value summary, a CTA line matching the "${input.ctaStyle}" CTA style, then a blank line followed by 8-15 relevant hashtags.
+7. The \`caption\` field must be a ready-to-paste Instagram post caption in ${langLabel}: a scroll-stopping hook line, 2-4 lines of value summary, a CTA line matching the "${input.ctaStyle}" CTA style, then a blank line followed by 8-15 relevant hashtags.
 8. Output ONLY the JSON object. No prose, no markdown fences.`;
 }

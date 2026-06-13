@@ -236,6 +236,7 @@ export function GeneratorForm() {
               options={[
                 { value: "id", label: "Indonesia" },
                 { value: "en", label: "English" },
+                { value: "mix", label: "Kombinasi", hint: "ID/EN" },
               ]}
             />
           </div>
