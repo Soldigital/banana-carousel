@@ -34,6 +34,8 @@ export interface Order {
   approved_by: string | null;
 }
 
+export type CarouselStatus = "success" | "failed" | "draft";
+
 export interface CarouselRecord {
   id: string;
   user_id: string;
@@ -41,4 +43,24 @@ export interface CarouselRecord {
   input: GeneratorInput;
   output: CarouselOutput;
   created_at: string;
+  // Added in migration 0007 (history management). Optional so older code paths
+  // and the existing client-side insert remain valid without specifying them.
+  deleted_at?: string | null;
+  status?: CarouselStatus;
+  reuse_count?: number;
+}
+
+// Lightweight row from the `carousel_list` view — excludes the heavy input/
+// output jsonb so history lists stay fast at 10k+ rows.
+export interface CarouselSummary {
+  id: string;
+  user_id: string;
+  title: string | null;
+  status: CarouselStatus;
+  created_at: string;
+  deleted_at: string | null;
+  reuse_count: number;
+  slide_count: number;
+  style_preset_id: string | null;
+  carousel_title: string | null;
 }

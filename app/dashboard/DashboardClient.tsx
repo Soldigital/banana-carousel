@@ -24,7 +24,8 @@ import {
   useApiKeyHydration,
 } from "@/components/api-key/ApiKeyModal";
 import { ProviderKeysPanel } from "@/components/api-key/ProviderKeysPanel";
-import { USE_GATEWAY } from "@/lib/config/flags";
+import { HistoryPanel } from "@/components/history/HistoryPanel";
+import { USE_GATEWAY, USE_HISTORY_V2 } from "@/lib/config/flags";
 import { createClient } from "@/lib/supabase/client";
 import { useFormStore } from "@/lib/store/form-store";
 import { useUIStore } from "@/lib/store/ui-store";
@@ -177,51 +178,56 @@ export function DashboardClient({
       {/* Tutorial */}
       <TutorialSection youtubeId={tutorial.youtubeId} steps={tutorial.steps} />
 
-      {/* Carousel history */}
-      <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold">
-            Riwayat Carousel{" "}
-            <span className="text-sm font-normal text-muted-foreground">
-              (30 hari terakhir)
+      {/* Carousel history — v2 (search/filter/recycle bin) behind a flag,
+          otherwise the original simple grid (instant rollback). */}
+      {USE_HISTORY_V2 ? (
+        <HistoryPanel />
+      ) : (
+        <section>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-lg font-semibold">
+              Riwayat Carousel{" "}
+              <span className="text-sm font-normal text-muted-foreground">
+                (30 hari terakhir)
+              </span>
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              {carousels.length} tersimpan
             </span>
-          </h2>
-          <span className="text-xs text-muted-foreground">
-            {carousels.length} tersimpan
-          </span>
-        </div>
+          </div>
 
-        {carousels.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-            Belum ada carousel tersimpan. Carousel yang Anda buat akan otomatis
-            muncul di sini.
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {carousels.map((rec) => (
-              <motion.button
-                key={rec.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={() => openCarousel(rec)}
-                className="group rounded-2xl border border-border bg-card/40 p-4 text-left transition-colors hover:border-banana/50 hover:bg-card"
-              >
-                <p className="line-clamp-2 font-semibold">
-                  {rec.title || rec.output?.carousel_title || "Tanpa judul"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {rec.input?.slideCount ?? rec.output?.slides?.length ?? 0} slide
-                  {" · "}
-                  {formatDate(rec.created_at)}
-                </p>
-                <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-banana opacity-0 transition-opacity group-hover:opacity-100">
-                  Buka di generator →
-                </span>
-              </motion.button>
-            ))}
-          </div>
-        )}
-      </section>
+          {carousels.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+              Belum ada carousel tersimpan. Carousel yang Anda buat akan otomatis
+              muncul di sini.
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {carousels.map((rec) => (
+                <motion.button
+                  key={rec.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={() => openCarousel(rec)}
+                  className="group rounded-2xl border border-border bg-card/40 p-4 text-left transition-colors hover:border-banana/50 hover:bg-card"
+                >
+                  <p className="line-clamp-2 font-semibold">
+                    {rec.title || rec.output?.carousel_title || "Tanpa judul"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {rec.input?.slideCount ?? rec.output?.slides?.length ?? 0} slide
+                    {" · "}
+                    {formatDate(rec.created_at)}
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-banana opacity-0 transition-opacity group-hover:opacity-100">
+                    Buka di generator →
+                  </span>
+                </motion.button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <ApiKeyModal />
     </div>
