@@ -5,7 +5,19 @@ import type {
   GeneratorInput,
   Language,
   CtaStyle,
+  LogoMode,
 } from "@/types/carousel";
+import type { BrandProfile } from "@/types/db";
+
+const CTA_VALUES: CtaStyle[] = [
+  "follow",
+  "save",
+  "share",
+  "comment",
+  "dm",
+  "link",
+  "engagement",
+];
 
 interface FormState extends GeneratorInput {
   isGenerating: boolean;
@@ -22,9 +34,19 @@ interface FormState extends GeneratorInput {
   setIsGenerating: (b: boolean) => void;
   setOutput: (o: CarouselOutput | null) => void;
   setError: (e: string | null) => void;
+  selectBrandProfile: (profile: BrandProfile | null) => void;
   loadFromHistory: (input: GeneratorInput, output: CarouselOutput) => void;
   reset: () => void;
 }
+
+// Brand-profile fields default to a logo-on, no-profile state. logoMode
+// "default" preserves the existing brand-name watermark behavior; only an
+// explicit "none" (Remove Logo) suppresses it.
+const DEFAULT_BRAND = {
+  brandProfileId: null as string | null,
+  logoMode: "default" as LogoMode,
+  logoOverridePath: null as string | null,
+};
 
 const DEFAULT_INPUT: GeneratorInput = {
   title: "",
@@ -38,6 +60,7 @@ const DEFAULT_INPUT: GeneratorInput = {
   slideCount: 7,
   language: "id",
   ctaStyle: "engagement",
+  ...DEFAULT_BRAND,
 };
 
 export const useFormStore = create<FormState>()(
@@ -55,8 +78,32 @@ export const useFormStore = create<FormState>()(
       setIsGenerating: (isGenerating) => set({ isGenerating }),
       setOutput: (output) => set({ output, error: null }),
       setError: (error) => set({ error }),
+      selectBrandProfile: (profile) => {
+        if (!profile) {
+          set({ ...DEFAULT_BRAND });
+          return;
+        }
+        const cta = profile.cta_style as CtaStyle | null;
+        set((s) => ({
+          brandProfileId: profile.id,
+          brandName: profile.instagram_username || profile.name || s.brandName,
+          dominantColors: profile.brand_color || s.dominantColors,
+          stylePresetId: profile.default_style_preset_id || s.stylePresetId,
+          ctaStyle: cta && CTA_VALUES.includes(cta) ? cta : s.ctaStyle,
+          logoMode: "default",
+          logoOverridePath: null,
+        }));
+      },
       loadFromHistory: (input, output) =>
-        set({ ...input, output, error: null, isGenerating: false }),
+        // Reset brand fields first so a reopened older carousel (which lacks
+        // them) doesn't inherit stale values; input overrides when present.
+        set({
+          ...DEFAULT_BRAND,
+          ...input,
+          output,
+          error: null,
+          isGenerating: false,
+        }),
       reset: () =>
         set({
           ...DEFAULT_INPUT,
@@ -79,6 +126,9 @@ export const useFormStore = create<FormState>()(
         slideCount: s.slideCount,
         language: s.language,
         ctaStyle: s.ctaStyle,
+        brandProfileId: s.brandProfileId,
+        logoMode: s.logoMode,
+        logoOverridePath: s.logoOverridePath,
       }),
     },
   ),

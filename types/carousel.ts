@@ -45,6 +45,8 @@ export interface CarouselOutput {
   caption: string;
 }
 
+export type LogoMode = "default" | "custom" | "none";
+
 export interface GeneratorInput {
   title: string;
   brandName?: string;
@@ -57,6 +59,11 @@ export interface GeneratorInput {
   slideCount: number;
   language: Language;
   ctaStyle: CtaStyle;
+  // Brand Profile (Phase 2) — all optional so existing inputs/history stay valid
+  // and the prompt is byte-identical when these are absent.
+  brandProfileId?: string | null;
+  logoMode?: LogoMode;
+  logoOverridePath?: string | null;
 }
 
 export interface StylePreset {

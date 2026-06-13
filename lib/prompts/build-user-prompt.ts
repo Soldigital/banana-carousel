@@ -28,8 +28,18 @@ export function buildUserPrompt(input: GeneratorInput): string {
   const brandBrief = brand
     ? `\n- Brand name / handle: ${brand}`
     : "";
-  const brandWatermark = brand
-    ? `\n- BRAND WATERMARK: Place a small, subtle brand watermark "${brand}" in a consistent corner (e.g. bottom-left) of EVERY slide's visual_prompt. It must be tasteful and unobtrusive — small, low-opacity, never covering the main subject or headline. Mention this watermark explicitly inside each slide's visual_prompt.`
+  // Watermark applies when a brand is set AND the user hasn't explicitly removed
+  // the logo. `logoMode` is undefined for legacy/flag-off inputs, so the
+  // `!== "none"` check preserves the exact previous behavior in that case.
+  const wantWatermark = brand && input.logoMode !== "none";
+  // When the user has an actual brand logo in play (default profile logo or a
+  // per-project upload), nudge the model to use the logo image rather than text.
+  const logoLine =
+    wantWatermark && (input.logoMode === "default" || input.logoMode === "custom")
+      ? ` If a brand logo image is available, place the actual logo (small, low-opacity, in the same corner) instead of rendering the brand name as text.`
+      : "";
+  const brandWatermark = wantWatermark
+    ? `\n- BRAND WATERMARK: Place a small, subtle brand watermark "${brand}" in a consistent corner (e.g. bottom-left) of EVERY slide's visual_prompt. It must be tasteful and unobtrusive — small, low-opacity, never covering the main subject or headline. Mention this watermark explicitly inside each slide's visual_prompt.${logoLine}`
     : "";
 
   return `Generate a complete carousel structure for the following creator brief.

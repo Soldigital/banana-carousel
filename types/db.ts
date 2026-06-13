@@ -34,6 +34,21 @@ export interface Order {
   approved_by: string | null;
 }
 
+export interface BrandProfile {
+  id: string;
+  user_id: string;
+  name: string;
+  website: string | null;
+  instagram_username: string | null;
+  account_name: string | null;
+  cta_style: string | null;
+  brand_color: string | null;
+  default_style_preset_id: string | null;
+  logo_path: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type CarouselStatus = "success" | "failed" | "draft";
 
 export interface CarouselRecord {

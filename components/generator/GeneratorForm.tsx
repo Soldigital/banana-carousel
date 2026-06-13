@@ -10,12 +10,13 @@ import { Label } from "@/components/ui/label";
 import { StylePresetGrid } from "./StylePresetGrid";
 import { SlideCountSlider } from "./SlideCountSlider";
 import { SegmentedControl } from "./SegmentedControl";
+import { BrandProfileBar } from "./BrandProfileBar";
 import { useFormStore } from "@/lib/store/form-store";
 import { useUIStore } from "@/lib/store/ui-store";
 import { loadApiKey, hasApiKey } from "@/lib/storage/api-key";
 import { generateCarousel, GeminiError } from "@/lib/gemini/generate-carousel";
 import { generateViaGateway, GatewayError } from "@/lib/ai/client";
-import { USE_GATEWAY } from "@/lib/config/flags";
+import { USE_GATEWAY, USE_BRAND_PROFILES } from "@/lib/config/flags";
 import { track } from "@/lib/analytics/track";
 import { saveCarousel } from "@/lib/data/save-carousel";
 import type { CtaStyle, GeneratorInput, Language } from "@/types/carousel";
@@ -68,6 +69,15 @@ export function GeneratorForm() {
       slideCount: f.slideCount,
       language: f.language,
       ctaStyle: f.ctaStyle,
+      // Brand fields are only attached when the feature is on, so the prompt is
+      // byte-identical to today when the flag is off.
+      ...(USE_BRAND_PROFILES
+        ? {
+            brandProfileId: f.brandProfileId,
+            logoMode: f.logoMode,
+            logoOverridePath: f.logoOverridePath,
+          }
+        : {}),
     };
 
     try {
@@ -125,6 +135,8 @@ export function GeneratorForm() {
 
   return (
     <div className="space-y-6">
+      {USE_BRAND_PROFILES && <BrandProfileBar />}
+
       <section className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">

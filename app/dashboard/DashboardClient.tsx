@@ -25,7 +25,12 @@ import {
 } from "@/components/api-key/ApiKeyModal";
 import { ProviderKeysPanel } from "@/components/api-key/ProviderKeysPanel";
 import { HistoryPanel } from "@/components/history/HistoryPanel";
-import { USE_GATEWAY, USE_HISTORY_V2 } from "@/lib/config/flags";
+import { BrandProfilesPanel } from "@/components/dashboard/BrandProfilesPanel";
+import {
+  USE_GATEWAY,
+  USE_HISTORY_V2,
+  USE_BRAND_PROFILES,
+} from "@/lib/config/flags";
 import { createClient } from "@/lib/supabase/client";
 import { useFormStore } from "@/lib/store/form-store";
 import { useUIStore } from "@/lib/store/ui-store";
@@ -174,6 +179,9 @@ export function DashboardClient({
 
       {/* Ganti password */}
       <ChangePassword />
+
+      {/* Brand profiles (flag-gated; Phase 2) */}
+      {USE_BRAND_PROFILES && <BrandProfilesPanel />}
 
       {/* Tutorial */}
       <TutorialSection youtubeId={tutorial.youtubeId} steps={tutorial.steps} />
