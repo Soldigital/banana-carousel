@@ -24,7 +24,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { STYLE_PRESETS } from "@/lib/prompts/style-presets";
-import { uploadLogo, logoPublicUrl, removeLogo } from "@/lib/brand/logo";
+import { uploadLogo, logoPublicUrl } from "@/lib/brand/logo";
 import type { BrandProfile } from "@/types/db";
 
 const CTA_OPTIONS = [
@@ -112,7 +112,7 @@ export function BrandProfilesPanel() {
     if (!file) return;
     setUploading(true);
     try {
-      const path = await uploadLogo(file, "profile");
+      const path = await uploadLogo(file, "profile", draft.logo_path);
       setDraft((d) => ({ ...d, logo_path: path }));
       toast.success("Logo terpasang. Jangan lupa simpan.");
     } catch (err) {
@@ -157,7 +157,6 @@ export function BrandProfilesPanel() {
     setProfiles((prev) => prev.filter((p) => p.id !== target.id)); // optimistic
     const res = await fetch(`/api/brand-profiles/${target.id}`, { method: "DELETE" });
     if (res.ok) {
-      void removeLogo(target.logo_path);
       toast.success("Brand profile dihapus.");
     } else {
       toast.error("Gagal menghapus.");

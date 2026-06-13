@@ -60,6 +60,24 @@ export async function listBrandProfiles(userId: string): Promise<BrandProfile[]>
   return (data as BrandProfile[]) ?? [];
 }
 
+export async function getBrandProfile(
+  userId: string,
+  id: string,
+): Promise<BrandProfile | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("brand_profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    console.error("[brand-profiles] get failed", error.message);
+    return null;
+  }
+  return (data as BrandProfile) ?? null;
+}
+
 export async function countBrandProfiles(userId: string): Promise<number> {
   const supabase = await createClient();
   const { count } = await supabase

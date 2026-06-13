@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/client";
 export const BRAND_LOGOS_BUCKET = "brand-logos";
 export const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2MB
 
-// Public CDN URL for a stored logo path (bucket is public — no signed URL).
+// Public CDN URL for a stored logo path (bucket is public — no signed URL,
+// no auth needed; getPublicUrl just builds the URL string).
 export function logoPublicUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   const supabase = createClient();
@@ -11,17 +12,14 @@ export function logoPublicUrl(path: string | null | undefined): string | null {
     .publicUrl;
 }
 
-function extOf(file: File): string {
-  const fromType = file.type.split("/")[1];
-  const ext = (fromType || file.name.split(".").pop() || "png").toLowerCase();
-  return ext === "jpeg" ? "jpg" : ext.replace(/[^a-z0-9]/g, "") || "png";
-}
-
-// Upload a logo to the current user's own prefix. `kind` separates a profile's
-// default logo from a per-project override. Returns the stored object path.
+// Upload a logo through the server (service-role admin), which bypasses storage
+// RLS — the same proven path as manual-order proof uploads. `kind` separates a
+// profile's default logo from a per-project override; `oldPath` (optional) is a
+// previous object to clean up on replace. Returns the stored object path.
 export async function uploadLogo(
   file: File,
   kind: "profile" | "override",
+  oldPath?: string | null,
 ): Promise<string> {
   if (!file.type.startsWith("image/")) {
     throw new Error("File harus berupa gambar.");
@@ -29,27 +27,13 @@ export async function uploadLogo(
   if (file.size > MAX_LOGO_BYTES) {
     throw new Error("Ukuran logo maksimal 2MB.");
   }
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Silakan login dulu.");
+  const body = new FormData();
+  body.append("file", file);
+  body.append("kind", kind);
+  if (oldPath) body.append("oldPath", oldPath);
 
-  const path = `${user.id}/${kind}-${crypto.randomUUID()}.${extOf(file)}`;
-  const { error } = await supabase.storage
-    .from(BRAND_LOGOS_BUCKET)
-    .upload(path, file, { upsert: true, contentType: file.type });
-  if (error) throw new Error(error.message);
-  return path;
-}
-
-// Best-effort removal of a stored logo (ignored if it fails).
-export async function removeLogo(path: string | null | undefined): Promise<void> {
-  if (!path) return;
-  try {
-    const supabase = createClient();
-    await supabase.storage.from(BRAND_LOGOS_BUCKET).remove([path]);
-  } catch {
-    /* best-effort */
-  }
+  const res = await fetch("/api/brand-profiles/logo", { method: "POST", body });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Gagal mengunggah logo.");
+  return data.path as string;
 }

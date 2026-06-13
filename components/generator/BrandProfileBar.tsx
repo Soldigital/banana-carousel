@@ -51,7 +51,7 @@ export function BrandProfileBar() {
     if (!file) return;
     setUploading(true);
     try {
-      const path = await uploadLogo(file, "override");
+      const path = await uploadLogo(file, "override", f.logoOverridePath);
       setField("logoOverridePath", path);
       setField("logoMode", "custom");
       toast.success("Logo khusus untuk project ini dipasang.");

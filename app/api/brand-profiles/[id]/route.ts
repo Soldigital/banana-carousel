@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  getBrandProfile,
   updateBrandProfile,
   deleteBrandProfile,
   sanitizeBrandInput,
@@ -51,9 +53,20 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
 
+  // Grab the logo path before deleting so we can clean up the stored object.
+  const profile = await getBrandProfile(user.id, id);
+
   const ok = await deleteBrandProfile(user.id, id);
   if (!ok) {
     return NextResponse.json({ error: "Gagal menghapus brand profile." }, { status: 500 });
+  }
+
+  // Best-effort removal of the logo object (admin bypasses storage RLS).
+  if (profile?.logo_path?.startsWith(`${user.id}/`)) {
+    await createAdminClient()
+      .storage.from("brand-logos")
+      .remove([profile.logo_path])
+      .catch(() => {});
   }
   return NextResponse.json({ ok: true });
 }
