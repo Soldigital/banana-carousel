@@ -34,7 +34,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyButton } from "@/components/generator/CopyButton";
 import { SalesChart } from "@/components/admin/SalesChart";
 import { PromotionsTab } from "@/components/admin/PromotionsTab";
-import { USE_PRICING_V2 } from "@/lib/config/flags";
+import { AffiliatesTab } from "@/components/admin/AffiliatesTab";
+import { USE_PRICING_V2, USE_AFFILIATE } from "@/lib/config/flags";
 import { formatIDR } from "@/lib/config/payment";
 import type { AdminStats, AdminUser, SalesSeries } from "@/lib/data/admin-stats";
 import type { AdminOrder } from "@/lib/data/admin-orders";
@@ -119,6 +120,9 @@ export function AdminClient({
               {USE_PRICING_V2 && (
                 <TabsTrigger value="promo">Promo</TabsTrigger>
               )}
+              {USE_AFFILIATE && (
+                <TabsTrigger value="affiliates">Affiliate</TabsTrigger>
+              )}
             </>
           )}
         </TabsList>
@@ -148,6 +152,11 @@ export function AdminClient({
             {USE_PRICING_V2 && (
               <TabsContent value="promo">
                 <PromotionsTab />
+              </TabsContent>
+            )}
+            {USE_AFFILIATE && (
+              <TabsContent value="affiliates">
+                <AffiliatesTab />
               </TabsContent>
             )}
           </>

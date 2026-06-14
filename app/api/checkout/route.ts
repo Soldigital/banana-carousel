@@ -8,9 +8,11 @@ import {
   ANNUAL_PRICE,
   ANNUAL_PRODUCT_NAME,
 } from "@/lib/config/payment";
+import { cookies } from "next/headers";
 import { getFoundingStatus } from "@/lib/data/founding";
 import { validateDiscount } from "@/lib/data/promo";
-import { USE_PRICING_V2 } from "@/lib/config/flags";
+import { attributeAtCheckout } from "@/lib/data/affiliate";
+import { USE_PRICING_V2, USE_AFFILIATE } from "@/lib/config/flags";
 import { rateLimit, clientIp } from "@/lib/security/ratelimit";
 
 export const runtime = "nodejs";
@@ -48,6 +50,17 @@ export async function POST(req: Request) {
       });
     } catch (e) {
       console.error("[checkout] ensureAccount failed (non-fatal)", e);
+    }
+
+    // Affiliate attribution: stash buyer→referrer from the /ref cookie (consumed
+    // on the paid grant). Best-effort.
+    if (USE_AFFILIATE) {
+      try {
+        const ref = (await cookies()).get("ref")?.value;
+        if (ref) await attributeAtCheckout(cleanEmail, ref);
+      } catch {
+        /* non-fatal */
+      }
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin;

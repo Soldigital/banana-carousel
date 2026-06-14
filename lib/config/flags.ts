@@ -21,3 +21,7 @@ export const USE_BRAND_PROFILES =
 // (0010) is additive and harmless regardless of this flag; entitlement/access is
 // unchanged either way.
 export const USE_PRICING_V2 = process.env.NEXT_PUBLIC_USE_PRICING_V2 === "on";
+
+// Affiliate / referral program (V2 Phase C3). Off ⇒ no affiliate UI; referral
+// links + reward logic are inert. Additive migration 0013 is harmless regardless.
+export const USE_AFFILIATE = process.env.NEXT_PUBLIC_USE_AFFILIATE === "on";

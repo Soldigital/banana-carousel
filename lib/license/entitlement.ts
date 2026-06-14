@@ -4,6 +4,7 @@ import { issueLicense, type CheckoutPlan } from "@/lib/license/token";
 import { normalizeEmail } from "@/lib/config/app";
 import { captureError } from "@/lib/observability/sentry";
 import { ANNUAL_DAYS } from "@/lib/config/payment";
+import { applyReferralOnGrant } from "@/lib/data/affiliate";
 import type { OrderMethod } from "@/types/db";
 
 // Server-side entitlement, keyed by EMAIL so it survives the "paid before
@@ -104,6 +105,8 @@ export async function grantEntitlementByEmail(
     if (opts.trialDays && opts.trialDays > 0) await grantTrial(admin, email, opts.trialDays);
     else await extendAnnual(admin, email);
   }
+  // Affiliate attribution + reward (best-effort; never blocks the grant).
+  await applyReferralOnGrant(admin, email, opts.trxId ?? null, opts.amount ?? 0);
   return { token, duplicate: false };
 }
 
