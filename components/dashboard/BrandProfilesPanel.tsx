@@ -10,6 +10,7 @@ import {
   Loader2,
   ImageIcon,
   X,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -136,7 +137,34 @@ export function BrandProfilesPanel() {
   const [saving, setSaving] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<BrandProfile | null>(null);
+  const [dnaBusy, setDnaBusy] = React.useState(false);
+  const [dna, setDna] = React.useState<Record<string, string> | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
+
+  async function generateDNA() {
+    if (editing === "new" || !editing) return;
+    setDnaBusy(true);
+    try {
+      const res = await fetch("/api/brand-profiles/dna", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileId: editing.id }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Gagal.");
+      setDna(d.dna);
+      setDraft((dr) => ({
+        ...dr,
+        tone_of_voice: dr.tone_of_voice || d.dna.tone_of_voice || "",
+        target_audience: dr.target_audience || d.dna.audience_persona || "",
+      }));
+      toast.success("Brand DNA dibuat & diisi ke profil.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal generate Brand DNA.");
+    } finally {
+      setDnaBusy(false);
+    }
+  }
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -150,15 +178,18 @@ export function BrandProfilesPanel() {
 
   function startCreate() {
     setDraft(EMPTY_DRAFT);
+    setDna(null);
     setEditing("new");
   }
   function startEdit(p: BrandProfile) {
     setDraft(toDraft(p));
+    setDna((p.brand_dna as Record<string, string> | null) ?? null);
     setEditing(p);
   }
   function cancel() {
     setEditing(null);
     setDraft(EMPTY_DRAFT);
+    setDna(null);
   }
 
   async function onUploadLogo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -375,6 +406,63 @@ export function BrandProfilesPanel() {
               onChange={(v) => setDraft((d) => ({ ...d, username_style: v }))}
             />
           </div>
+
+          {/* AI Brand DNA (Pro) — only for a saved profile */}
+          {editing !== "new" && (
+            <div className="rounded-xl border border-banana/40 bg-banana/5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="size-4 text-banana" />
+                  <span className="text-sm font-semibold">AI Brand DNA</span>
+                  <span className="rounded-full bg-banana/15 px-2 py-0.5 text-[10px] font-bold text-banana">
+                    PRO
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={generateDNA}
+                  disabled={dnaBusy}
+                >
+                  {dnaBusy ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="size-3.5" />
+                  )}
+                  {dna ? "Generate Ulang" : "Generate Brand DNA"}
+                </Button>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pakai API key Anda sendiri (BYOK). Hasil otomatis mengisi Tone of
+                Voice & Target Audience.
+              </p>
+              {dna && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {(
+                    [
+                      ["Brand Voice", "brand_voice"],
+                      ["Tone of Voice", "tone_of_voice"],
+                      ["CTA Style", "cta_style"],
+                      ["Audience Persona", "audience_persona"],
+                      ["Visual Direction", "visual_direction"],
+                      ["Content Style", "content_style"],
+                    ] as const
+                  ).map(([label, key]) => (
+                    <div
+                      key={key}
+                      className="rounded-lg border border-border bg-background/40 p-2"
+                    >
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                        {label}
+                      </p>
+                      <p className="text-xs">{dna[key]}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Default logo */}
           <Field label="Logo Default">

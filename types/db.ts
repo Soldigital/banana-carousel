@@ -63,8 +63,19 @@ export interface BrandProfile {
   username_position: string | null;
   username_size: string | null;
   username_style: string | null;
+  // C4 — AI Brand DNA (jsonb)
+  brand_dna: BrandDNAJson | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface BrandDNAJson {
+  brand_voice: string;
+  tone_of_voice: string;
+  cta_style: string;
+  audience_persona: string;
+  visual_direction: string;
+  content_style: string;
 }
 
 export type CarouselStatus = "success" | "failed" | "draft";
