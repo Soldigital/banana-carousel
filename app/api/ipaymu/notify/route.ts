@@ -40,8 +40,8 @@ export async function POST(req: Request) {
     if (!isPaidTransaction(tx)) return NextResponse.json({ ok: true });
 
     const ref = referenceId || transactionReferenceId(tx);
-    const email = verifyRef(ref);
-    if (!email) {
+    const info = verifyRef(ref);
+    if (!info) {
       // Paid, but we cannot resolve the buyer (e.g. LICENSE_SECRET rotated since
       // checkout). Returning 200 avoids an iPaymu retry-storm, but this is a
       // money-received-no-license case → alert the owner so they can issue it.
@@ -57,6 +57,7 @@ export async function POST(req: Request) {
       );
       return NextResponse.json({ ok: true });
     }
+    const { email, plan } = info;
 
     const amount = transactionAmount(tx) || PRICE;
     // Beli = Daftar: make sure the buyer has an account (idempotent).
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
     // Grant entitlement (idempotent via trx_id) and reuse the issued token as
     // the license/access code we email.
     const { token, duplicate } = await grantEntitlementByEmail(email, {
+      plan,
       method: "ipaymu",
       trxId,
       amount,

@@ -10,6 +10,11 @@ export const LIFETIME_PRICE = 299000; // Rp299.000 — after founding sold out
 export const FOUNDING_CAP = 100;
 export const FOUNDING_PRODUCT_NAME = "Banana Carousel — Founding Member (Lifetime)";
 
+// V2 Phase C — Pro Annual (manual yearly renewal).
+export const ANNUAL_PRICE = 99000; // Rp99.000 / tahun
+export const ANNUAL_DAYS = 365;
+export const ANNUAL_PRODUCT_NAME = "Banana Carousel — Pro Annual (1 Tahun)";
+
 export function formatIDR(amount: number): string {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",

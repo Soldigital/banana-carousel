@@ -12,9 +12,10 @@ export interface EntitlementStatus {
   banned: boolean;
   email: string | null;
   accessCode: string | null;
-  // Phase B label (does not affect `entitled` in Phase B).
   tier: Tier;
   founderNumber: number | null;
+  // Phase C: renewal date for pro_annual (null for lifetime/founding/free).
+  tierExpiresAt: string | null;
 }
 
 const LOGGED_OUT: EntitlementStatus = {
@@ -27,6 +28,7 @@ const LOGGED_OUT: EntitlementStatus = {
   accessCode: null,
   tier: "free",
   founderNumber: null,
+  tierExpiresAt: null,
 };
 
 // Resolves the current user's entitlement using the RLS-scoped server client.
@@ -51,11 +53,12 @@ export async function getEntitlement(): Promise<EntitlementStatus> {
         banned?: boolean;
         tier?: Tier;
         founder_number?: number | null;
+        tier_expires_at?: string | null;
       }
     | null = null;
   const full = await supabase
     .from("profiles")
-    .select("is_pro, is_admin, access_code, banned, tier, founder_number")
+    .select("is_pro, is_admin, access_code, banned, tier, founder_number, tier_expires_at")
     .eq("id", user.id)
     .maybeSingle();
   if (full.error) {
@@ -71,15 +74,21 @@ export async function getEntitlement(): Promise<EntitlementStatus> {
 
   const owner = isOwnerEmail(user.email);
   const banned = !!profile?.banned;
+  const tier: Tier = profile?.tier ?? (profile?.is_pro ? "lifetime" : "free");
+  const expiresAt = profile?.tier_expires_at ?? null;
+  // Only pro_annual can lapse; lifetime/founding never expire (notExpired=true).
+  const notExpired =
+    tier !== "pro_annual" || (!!expiresAt && Date.now() < new Date(expiresAt).getTime());
   return {
     loggedIn: true,
-    entitled: !banned && (owner || !!profile?.is_pro),
+    entitled: !banned && (owner || (!!profile?.is_pro && notExpired)),
     owner,
     isAdmin: owner || !!profile?.is_admin,
     banned,
     email: user.email ?? null,
     accessCode: profile?.access_code ?? null,
-    tier: profile?.tier ?? (profile?.is_pro ? "lifetime" : "free"),
+    tier,
     founderNumber: profile?.founder_number ?? null,
+    tierExpiresAt: expiresAt,
   };
 }

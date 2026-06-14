@@ -88,7 +88,13 @@ export function DashboardClient({
           {status.entitled ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-500">
               <CheckCircle2 className="size-3.5" />
-              {status.owner ? "Owner" : "Pro — Lifetime"}
+              {status.owner
+                ? "Owner"
+                : status.tier === "pro_annual"
+                  ? "Pro — Annual"
+                  : status.tier === "founding"
+                    ? "Founding Member"
+                    : "Pro — Lifetime"}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
@@ -100,6 +106,19 @@ export function DashboardClient({
 
         {status.entitled ? (
           <div className="mt-4 space-y-4">
+            {status.tier === "pro_annual" && status.tierExpiresAt && (
+              <div className="flex flex-col gap-2 rounded-lg border border-border bg-background/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Pro Annual aktif sampai{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatDate(status.tierExpiresAt)}
+                  </span>
+                </p>
+                {USE_PRICING_V2 && (
+                  <BuyButton plan="annual" label="Perpanjang" variant="outline" size="sm" />
+                )}
+              </div>
+            )}
             <Button asChild>
               <Link href="/generate">
                 <Sparkles className="size-4" />
@@ -127,9 +146,19 @@ export function DashboardClient({
           </div>
         ) : (
           <div className="mt-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Aktifkan akses lifetime untuk membuka generator.
-            </p>
+            {USE_PRICING_V2 && status.tier === "pro_annual" ? (
+              <p className="text-sm text-muted-foreground">
+                Langganan Pro Annual Anda sudah berakhir. Perpanjang untuk membuka
+                generator lagi.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Aktifkan akses lifetime untuk membuka generator.
+              </p>
+            )}
+            {USE_PRICING_V2 && status.tier === "pro_annual" && (
+              <BuyButton plan="annual" label="Perpanjang Pro Annual" className="w-full sm:w-auto" />
+            )}
             <div className="flex flex-col gap-2 sm:flex-row">
               <BuyButton />
               <Button asChild variant="outline">

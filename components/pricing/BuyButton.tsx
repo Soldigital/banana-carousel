@@ -16,34 +16,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { track } from "@/lib/analytics/track";
 import { USE_PRICING_V2 } from "@/lib/config/flags";
-import { FOUNDING_PRICE, formatIDR } from "@/lib/config/payment";
+import { FOUNDING_PRICE, ANNUAL_PRICE, formatIDR } from "@/lib/config/payment";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 interface Props extends Omit<ButtonProps, "onClick"> {
   label?: string;
+  plan?: "lifetime" | "annual";
 }
 
 // Self-contained: a button that opens a small dialog to collect the buyer's
 // email, then creates an iPaymu payment session and redirects to the payment
 // page. Used both on the landing pricing section and the locked generator.
 // When pricing v2 is on, it shows the live Founding/Lifetime price.
-export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
+export function BuyButton({
+  label = "Beli Akses Lifetime",
+  plan = "lifetime",
+  ...rest
+}: Props) {
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
   const [whatsapp, setWhatsapp] = React.useState("");
   const [busy, setBusy] = React.useState(false);
-  const [price, setPrice] = React.useState(FOUNDING_PRICE);
+  const [price, setPrice] = React.useState(
+    plan === "annual" ? ANNUAL_PRICE : FOUNDING_PRICE,
+  );
 
   React.useEffect(() => {
-    if (!USE_PRICING_V2) return;
+    if (!USE_PRICING_V2 || plan === "annual") return; // annual = fixed price
     fetch("/api/founding")
       .then((r) => r.json())
       .then((d) => typeof d.price === "number" && setPrice(d.price))
       .catch(() => {});
-  }, []);
-  const priceLabel = formatIDR(price);
+  }, [plan]);
+  const priceLabel = formatIDR(price) + (plan === "annual" ? "/tahun" : "");
 
   async function handleCheckout() {
     const clean = email.trim().toLowerCase();
@@ -61,6 +68,7 @@ export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
           email: clean,
           name: name.trim(),
           whatsapp: whatsapp.trim(),
+          plan,
         }),
       });
       const data = await res.json();

@@ -1,8 +1,9 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { issueLicense } from "@/lib/license/token";
+import { issueLicense, type CheckoutPlan } from "@/lib/license/token";
 import { normalizeEmail } from "@/lib/config/app";
 import { captureError } from "@/lib/observability/sentry";
+import { ANNUAL_DAYS } from "@/lib/config/payment";
 import type { OrderMethod } from "@/types/db";
 
 // Server-side entitlement, keyed by EMAIL so it survives the "paid before
@@ -18,6 +19,7 @@ interface GrantOpts {
   name?: string | null;
   whatsapp?: string | null;
   approvedBy?: string | null;
+  plan?: CheckoutPlan; // 'lifetime' (default) | 'annual'
 }
 
 export interface GrantResult {
@@ -71,7 +73,7 @@ export async function grantEntitlementByEmail(
       .eq("trx_id", opts.trxId)
       .maybeSingle();
     if (existing?.access_code) {
-      await setProfilePro(admin, email, existing.access_code);
+      await setProfilePro(admin, email, existing.access_code, opts.plan ?? "lifetime");
       return { token: existing.access_code, duplicate: true };
     }
   }
@@ -93,7 +95,9 @@ export async function grantEntitlementByEmail(
     approved_at: now,
   });
   if (insErr) throw insErr;
-  await setProfilePro(admin, email, token);
+  const plan = opts.plan ?? "lifetime";
+  await setProfilePro(admin, email, token, plan);
+  if (plan === "annual") await extendAnnual(admin, email);
   return { token, duplicate: false };
 }
 
@@ -103,6 +107,7 @@ async function setProfilePro(
   admin: ReturnType<typeof createAdminClient>,
   email: string,
   token: string,
+  plan: CheckoutPlan = "lifetime",
 ): Promise<void> {
   // Best-effort: if the account doesn't exist yet (paid-before-signup) this
   // updates 0 rows, and reconcileOnLogin() flips is_pro on first dashboard load.
@@ -116,7 +121,40 @@ async function setProfilePro(
     void captureError(error, { scope: "setProfilePro", email });
     return;
   }
-  await assignTier(admin, email);
+  if (plan === "annual") {
+    // Label only; the +365d expiry extension happens once per payment in the
+    // grant's non-duplicate path (extendAnnual). Never assign a Founding slot
+    // to an annual subscriber.
+    await admin.from("profiles").update({ tier: "pro_annual" }).eq("email", email);
+  } else {
+    await assignTier(admin, email);
+  }
+}
+
+// Extend a Pro Annual subscription by ANNUAL_DAYS from max(now, current expiry).
+// Called exactly once per successful payment (the grant's deduped new path), so
+// webhook retries can't double-extend. Best-effort; never throws.
+async function extendAnnual(
+  admin: ReturnType<typeof createAdminClient>,
+  email: string,
+): Promise<void> {
+  try {
+    const { data } = await admin
+      .from("profiles")
+      .select("tier_expires_at")
+      .eq("email", email)
+      .maybeSingle();
+    const now = Date.now();
+    const cur = data?.tier_expires_at ? new Date(data.tier_expires_at).getTime() : 0;
+    const base = Math.max(now, cur);
+    const next = new Date(base + ANNUAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    await admin
+      .from("profiles")
+      .update({ tier: "pro_annual", tier_expires_at: next })
+      .eq("email", email);
+  } catch (e) {
+    console.warn("[entitlement] extendAnnual skipped", e);
+  }
 }
 
 // Assign a paid tier label (Phase B). Atomically claims a Founding slot (1..100)

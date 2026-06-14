@@ -63,23 +63,43 @@ export function verifyLicense(token: string): LicenseInfo {
   }
 }
 
-// referenceId carries the buyer email through iPaymu (echoed back in the
-// webhook + transaction status), signed so it cannot be forged. Hex-encoded +
-// "X" delimiter keeps it strictly alphanumeric for iPaymu's referenceId field.
-export function signRef(email: string): string {
+export type CheckoutPlan = "lifetime" | "annual";
+
+export interface RefInfo {
+  email: string;
+  plan: CheckoutPlan;
+}
+
+// referenceId carries the buyer email (+ plan) through iPaymu (echoed back in
+// the webhook + transaction status), signed so it cannot be forged. Hex-encoded
+// + a single-char delimiter keeps it strictly alphanumeric for iPaymu.
+//   lifetime → `${hexEmail}X${sig}`  (EXACTLY the legacy format — unchanged)
+//   annual   → `${hexEmail}A${sig}`  (distinct delimiter + distinct sig domain)
+export function signRef(email: string, plan: CheckoutPlan = "lifetime"): string {
   const e = Buffer.from(email).toString("hex");
+  if (plan === "annual") {
+    return `${e}A${hmacHex("refA:" + e).slice(0, 16)}`;
+  }
   return `${e}X${hmacHex("ref:" + e).slice(0, 16)}`;
 }
 
-export function verifyRef(ref: string): string | null {
-  const idx = (ref || "").indexOf("X");
-  if (idx < 0) return null;
-  const e = ref.slice(0, idx);
-  const sig = ref.slice(idx + 1);
-  if (!safeEqual(sig, hmacHex("ref:" + e).slice(0, 16))) return null;
-  try {
-    return Buffer.from(e, "hex").toString("utf8");
-  } catch {
-    return null;
+export function verifyRef(ref: string): RefInfo | null {
+  const r = ref || "";
+  // Try annual ('A') first, then legacy lifetime ('X').
+  for (const [delim, plan, domain] of [
+    ["A", "annual", "refA:"],
+    ["X", "lifetime", "ref:"],
+  ] as const) {
+    const idx = r.indexOf(delim);
+    if (idx < 0) continue;
+    const e = r.slice(0, idx);
+    const sig = r.slice(idx + 1);
+    if (!safeEqual(sig, hmacHex(domain + e).slice(0, 16))) continue;
+    try {
+      return { email: Buffer.from(e, "hex").toString("utf8"), plan };
+    } catch {
+      return null;
+    }
   }
+  return null;
 }

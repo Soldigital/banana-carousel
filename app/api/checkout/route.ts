@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { createPayment } from "@/lib/ipaymu/client";
 import { signRef } from "@/lib/license/token";
 import { ensureAccountForEmail } from "@/lib/auth/account";
-import { PRICE, PRODUCT_NAME } from "@/lib/config/payment";
+import {
+  PRICE,
+  PRODUCT_NAME,
+  ANNUAL_PRICE,
+  ANNUAL_PRODUCT_NAME,
+} from "@/lib/config/payment";
 import { getFoundingStatus } from "@/lib/data/founding";
 import { USE_PRICING_V2 } from "@/lib/config/flags";
 import { rateLimit, clientIp } from "@/lib/security/ratelimit";
@@ -23,11 +28,15 @@ export async function POST(req: Request) {
     );
   }
   try {
-    const { email, name, whatsapp } = await req.json();
+    const body = await req.json();
+    const { email, name, whatsapp } = body;
     const cleanEmail = String(email ?? "").trim().toLowerCase();
     if (!EMAIL_RE.test(cleanEmail)) {
       return NextResponse.json({ error: "Email tidak valid." }, { status: 400 });
     }
+    // Annual is only offered when pricing v2 is on; otherwise always lifetime.
+    const plan: "lifetime" | "annual" =
+      USE_PRICING_V2 && body?.plan === "annual" ? "annual" : "lifetime";
 
     // Beli = Daftar: create the buyer's account now (best-effort) so name/
     // WhatsApp are captured and they can log in via Magic Link later.
@@ -41,16 +50,22 @@ export async function POST(req: Request) {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin;
-    const referenceId = signRef(cleanEmail);
+    const referenceId = signRef(cleanEmail, plan);
 
-    // V2: price is computed server-side from the live Founding count (never
-    // trusted from the client). When pricing v2 is off, the legacy flat price.
+    // V2: price is computed server-side (never trusted from the client). Annual
+    // = fixed yearly price; lifetime = live Founding/Lifetime price. Flag off =
+    // legacy flat price.
     let price = PRICE;
     let product = PRODUCT_NAME;
     if (USE_PRICING_V2) {
-      const f = await getFoundingStatus();
-      price = f.price;
-      product = f.productName;
+      if (plan === "annual") {
+        price = ANNUAL_PRICE;
+        product = ANNUAL_PRODUCT_NAME;
+      } else {
+        const f = await getFoundingStatus();
+        price = f.price;
+        product = f.productName;
+      }
     }
 
     const { url } = await createPayment({
