@@ -9,6 +9,7 @@ import {
   ANNUAL_PRODUCT_NAME,
 } from "@/lib/config/payment";
 import { getFoundingStatus } from "@/lib/data/founding";
+import { validateDiscount } from "@/lib/data/promo";
 import { USE_PRICING_V2 } from "@/lib/config/flags";
 import { rateLimit, clientIp } from "@/lib/security/ratelimit";
 
@@ -50,7 +51,6 @@ export async function POST(req: Request) {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin;
-    const referenceId = signRef(cleanEmail, plan);
 
     // V2: price is computed server-side (never trusted from the client). Annual
     // = fixed yearly price; lifetime = live Founding/Lifetime price. Flag off =
@@ -67,6 +67,23 @@ export async function POST(req: Request) {
         product = f.productName;
       }
     }
+
+    // Promo discount (fixed/percentage) — re-validated server-side, applied to
+    // the price, and stamped onto the order at payment via the signed ref.
+    let appliedCode: string | null = null;
+    const rawCode =
+      USE_PRICING_V2 && typeof body?.code === "string"
+        ? body.code.trim().toUpperCase()
+        : "";
+    if (rawCode) {
+      const v = await validateDiscount(rawCode, cleanEmail, price);
+      if (v.ok && typeof v.discountedPrice === "number") {
+        price = v.discountedPrice;
+        appliedCode = rawCode;
+      }
+    }
+
+    const referenceId = signRef(cleanEmail, plan, appliedCode);
 
     const { url } = await createPayment({
       product,

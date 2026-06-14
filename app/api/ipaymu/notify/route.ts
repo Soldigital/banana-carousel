@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       );
       return NextResponse.json({ ok: true });
     }
-    const { email, plan } = info;
+    const { email, plan, code } = info;
 
     const amount = transactionAmount(tx) || PRICE;
     // Beli = Daftar: make sure the buyer has an account (idempotent).
@@ -70,6 +70,7 @@ export async function POST(req: Request) {
     // the license/access code we email.
     const { token, duplicate } = await grantEntitlementByEmail(email, {
       plan,
+      promoCode: code,
       method: "ipaymu",
       trxId,
       amount,

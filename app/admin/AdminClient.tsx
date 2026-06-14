@@ -33,6 +33,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyButton } from "@/components/generator/CopyButton";
 import { SalesChart } from "@/components/admin/SalesChart";
+import { PromotionsTab } from "@/components/admin/PromotionsTab";
+import { USE_PRICING_V2 } from "@/lib/config/flags";
 import { formatIDR } from "@/lib/config/payment";
 import type { AdminStats, AdminUser, SalesSeries } from "@/lib/data/admin-stats";
 import type { AdminOrder } from "@/lib/data/admin-orders";
@@ -114,6 +116,9 @@ export function AdminClient({
                 <Megaphone className="size-4" /> Pengumuman
               </TabsTrigger>
               <TabsTrigger value="tutorial">Tutorial</TabsTrigger>
+              {USE_PRICING_V2 && (
+                <TabsTrigger value="promo">Promo</TabsTrigger>
+              )}
             </>
           )}
         </TabsList>
@@ -140,6 +145,11 @@ export function AdminClient({
             <TabsContent value="tutorial">
               <TutorialTab current={tutorial} />
             </TabsContent>
+            {USE_PRICING_V2 && (
+              <TabsContent value="promo">
+                <PromotionsTab />
+              </TabsContent>
+            )}
           </>
         )}
       </Tabs>

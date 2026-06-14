@@ -20,6 +20,8 @@ interface GrantOpts {
   whatsapp?: string | null;
   approvedBy?: string | null;
   plan?: CheckoutPlan; // 'lifetime' (default) | 'annual'
+  promoCode?: string | null; // recorded on the order (usage ledger)
+  trialDays?: number; // for trial promos: pro_annual for N days
 }
 
 export interface GrantResult {
@@ -93,11 +95,15 @@ export async function grantEntitlementByEmail(
     trx_id: opts.trxId ?? null,
     access_code: token,
     approved_at: now,
+    promo_code: opts.promoCode ?? null,
   });
   if (insErr) throw insErr;
   const plan = opts.plan ?? "lifetime";
   await setProfilePro(admin, email, token, plan);
-  if (plan === "annual") await extendAnnual(admin, email);
+  if (plan === "annual") {
+    if (opts.trialDays && opts.trialDays > 0) await grantTrial(admin, email, opts.trialDays);
+    else await extendAnnual(admin, email);
+  }
   return { token, duplicate: false };
 }
 
@@ -154,6 +160,31 @@ async function extendAnnual(
       .eq("email", email);
   } catch (e) {
     console.warn("[entitlement] extendAnnual skipped", e);
+  }
+}
+
+// Trial promo: grant pro_annual access for `days` from now (never shortening an
+// existing longer subscription). Best-effort.
+async function grantTrial(
+  admin: ReturnType<typeof createAdminClient>,
+  email: string,
+  days: number,
+): Promise<void> {
+  try {
+    const { data } = await admin
+      .from("profiles")
+      .select("tier_expires_at")
+      .eq("email", email)
+      .maybeSingle();
+    const cur = data?.tier_expires_at ? new Date(data.tier_expires_at).getTime() : 0;
+    const candidate = Date.now() + days * 24 * 60 * 60 * 1000;
+    const next = new Date(Math.max(cur, candidate)).toISOString();
+    await admin
+      .from("profiles")
+      .update({ tier: "pro_annual", tier_expires_at: next })
+      .eq("email", email);
+  } catch (e) {
+    console.warn("[entitlement] grantTrial skipped", e);
   }
 }
 

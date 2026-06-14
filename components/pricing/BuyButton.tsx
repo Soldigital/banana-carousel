@@ -42,6 +42,11 @@ export function BuyButton({
   const [price, setPrice] = React.useState(
     plan === "annual" ? ANNUAL_PRICE : FOUNDING_PRICE,
   );
+  const [code, setCode] = React.useState("");
+  const [checking, setChecking] = React.useState(false);
+  const [discount, setDiscount] = React.useState<{ price: number; label: string } | null>(
+    null,
+  );
 
   React.useEffect(() => {
     if (!USE_PRICING_V2 || plan === "annual") return; // annual = fixed price
@@ -50,7 +55,35 @@ export function BuyButton({
       .then((d) => typeof d.price === "number" && setPrice(d.price))
       .catch(() => {});
   }, [plan]);
-  const priceLabel = formatIDR(price) + (plan === "annual" ? "/tahun" : "");
+
+  const effectivePrice = discount?.price ?? price;
+  const priceLabel = formatIDR(effectivePrice) + (plan === "annual" ? "/tahun" : "");
+
+  async function applyCode() {
+    const clean = email.trim().toLowerCase();
+    if (!EMAIL_RE.test(clean)) return toast.error("Masukkan email dulu.");
+    if (!code.trim()) return;
+    setChecking(true);
+    try {
+      const res = await fetch("/api/promo/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim(), email: clean, plan }),
+      });
+      const d = await res.json();
+      if (d.ok && typeof d.discountedPrice === "number") {
+        setDiscount({ price: d.discountedPrice, label: d.label || code.trim() });
+        toast.success("Kode promo dipakai!");
+      } else {
+        setDiscount(null);
+        toast.error(d.reason || "Kode tidak valid.");
+      }
+    } catch {
+      toast.error("Gagal cek kode.");
+    } finally {
+      setChecking(false);
+    }
+  }
 
   async function handleCheckout() {
     const clean = email.trim().toLowerCase();
@@ -69,6 +102,7 @@ export function BuyButton({
           name: name.trim(),
           whatsapp: whatsapp.trim(),
           plan,
+          code: discount ? code.trim().toUpperCase() : undefined,
         }),
       });
       const data = await res.json();
@@ -138,6 +172,37 @@ export function BuyButton({
                 onChange={(e) => setWhatsapp(e.target.value)}
               />
             </div>
+            {USE_PRICING_V2 && (
+              <div className="space-y-1.5">
+                <Label htmlFor="buyer-promo">Kode Promo (opsional)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="buyer-promo"
+                    placeholder="HEMAT20"
+                    value={code}
+                    onChange={(e) => {
+                      setCode(e.target.value.toUpperCase());
+                      setDiscount(null);
+                    }}
+                    className="font-mono"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={applyCode}
+                    disabled={checking || !code.trim()}
+                    className="shrink-0"
+                  >
+                    {checking ? <Loader2 className="size-4 animate-spin" /> : "Pakai"}
+                  </Button>
+                </div>
+                {discount && (
+                  <p className="text-xs font-semibold text-emerald-500">
+                    Diskon diterapkan: {discount.label} → {formatIDR(discount.price)}
+                  </p>
+                )}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
               Pembayaran diproses aman lewat iPaymu (transfer bank, e-wallet,
               QRIS, kartu).

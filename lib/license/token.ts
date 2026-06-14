@@ -68,38 +68,68 @@ export type CheckoutPlan = "lifetime" | "annual";
 export interface RefInfo {
   email: string;
   plan: CheckoutPlan;
+  code: string | null; // promo code, if one was applied at checkout
 }
 
-// referenceId carries the buyer email (+ plan) through iPaymu (echoed back in
-// the webhook + transaction status), signed so it cannot be forged. Hex-encoded
-// + a single-char delimiter keeps it strictly alphanumeric for iPaymu.
-//   lifetime → `${hexEmail}X${sig}`  (EXACTLY the legacy format — unchanged)
-//   annual   → `${hexEmail}A${sig}`  (distinct delimiter + distinct sig domain)
-export function signRef(email: string, plan: CheckoutPlan = "lifetime"): string {
+// referenceId carries the buyer email (+ plan + optional promo code) through
+// iPaymu (echoed back in the webhook), signed so it cannot be forged. Hex
+// segments + uppercase-letter delimiters keep it strictly alphanumeric (hex is
+// lowercase, so X/A/C never collide with the data).
+//   lifetime, no code → `${hexEmail}X${sig}`   (EXACTLY the legacy format)
+//   annual,   no code → `${hexEmail}A${sig}`
+//   with a promo code → `${hexEmail}${X|A}${hexCode}C${sig}`
+export function signRef(
+  email: string,
+  plan: CheckoutPlan = "lifetime",
+  code?: string | null,
+): string {
   const e = Buffer.from(email).toString("hex");
-  if (plan === "annual") {
-    return `${e}A${hmacHex("refA:" + e).slice(0, 16)}`;
+  const delim = plan === "annual" ? "A" : "X";
+  if (code) {
+    const c = Buffer.from(code).toString("hex");
+    const sig = hmacHex(`refC:${e}:${plan}:${c}`).slice(0, 16);
+    return `${e}${delim}${c}C${sig}`;
   }
-  return `${e}X${hmacHex("ref:" + e).slice(0, 16)}`;
+  // No code: byte-identical to the pre-promo format.
+  return plan === "annual"
+    ? `${e}A${hmacHex("refA:" + e).slice(0, 16)}`
+    : `${e}X${hmacHex("ref:" + e).slice(0, 16)}`;
 }
 
 export function verifyRef(ref: string): RefInfo | null {
   const r = ref || "";
-  // Try annual ('A') first, then legacy lifetime ('X').
-  for (const [delim, plan, domain] of [
-    ["A", "annual", "refA:"],
-    ["X", "lifetime", "ref:"],
-  ] as const) {
-    const idx = r.indexOf(delim);
-    if (idx < 0) continue;
-    const e = r.slice(0, idx);
-    const sig = r.slice(idx + 1);
-    if (!safeEqual(sig, hmacHex(domain + e).slice(0, 16))) continue;
-    try {
-      return { email: Buffer.from(e, "hex").toString("utf8"), plan };
-    } catch {
-      return null;
-    }
+  const ix = r.indexOf("X");
+  const ia = r.indexOf("A");
+  if (ix < 0 && ia < 0) return null;
+  let idx: number;
+  let plan: CheckoutPlan;
+  let domain: string;
+  if (ia >= 0 && (ix < 0 || ia < ix)) {
+    idx = ia;
+    plan = "annual";
+    domain = "refA:";
+  } else {
+    idx = ix;
+    plan = "lifetime";
+    domain = "ref:";
   }
-  return null;
+  const e = r.slice(0, idx);
+  const rest = r.slice(idx + 1);
+  const cIdx = rest.indexOf("C");
+  try {
+    if (cIdx >= 0) {
+      const c = rest.slice(0, cIdx);
+      const sig = rest.slice(cIdx + 1);
+      if (!safeEqual(sig, hmacHex(`refC:${e}:${plan}:${c}`).slice(0, 16))) return null;
+      return {
+        email: Buffer.from(e, "hex").toString("utf8"),
+        plan,
+        code: Buffer.from(c, "hex").toString("utf8"),
+      };
+    }
+    if (!safeEqual(rest, hmacHex(domain + e).slice(0, 16))) return null;
+    return { email: Buffer.from(e, "hex").toString("utf8"), plan, code: null };
+  } catch {
+    return null;
+  }
 }

@@ -169,6 +169,7 @@ export function DashboardClient({
               </Button>
             </div>
             <ClaimLicense onClaimed={() => router.refresh()} />
+            {USE_PRICING_V2 && <PromoRedeem onRedeemed={() => router.refresh()} />}
           </div>
         )}
       </section>
@@ -341,6 +342,54 @@ function ChangePassword() {
         Simpan Password
       </Button>
     </section>
+  );
+}
+
+function PromoRedeem({ onRedeemed }: { onRedeemed: () => void }) {
+  const [code, setCode] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+
+  async function redeem() {
+    const c = code.trim();
+    if (!c) return toast.error("Masukkan kode promo dulu.");
+    setBusy(true);
+    try {
+      const res = await fetch("/api/promo/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: c }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Kode tidak valid.");
+      toast.success(
+        data.type === "trial" ? "Trial aktif! Selamat mencoba." : "Akses diaktifkan!",
+      );
+      onRedeemed();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal klaim.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-border pt-4">
+      <p className="mb-2 text-xs font-semibold text-muted-foreground">
+        Punya kode promo / trial? Klaim di sini:
+      </p>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          placeholder="COBA30"
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          className="font-mono text-xs"
+        />
+        <Button variant="outline" onClick={redeem} disabled={busy} className="shrink-0">
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />}
+          Klaim Kode
+        </Button>
+      </div>
+    </div>
   );
 }
 
