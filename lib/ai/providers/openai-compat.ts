@@ -36,12 +36,13 @@ ${JSON.stringify(GEMINI_RESPONSE_SCHEMA)}
 - Every other string field (carousel_title, headline, body, hook.*, cta.*, global_style.mood/typography_family/aspect_ratio/consistency_notes, typography_instruction, layout_instruction) MUST be non-empty.
 - No extra top-level keys. No markdown, no code fences — just the json object.`;
 
-// Output cap for OpenAI-compat providers. 8192 fits a full 10-slide carousel
-// (observed ~2.7k-4.5k completion tokens) with headroom. We intentionally do
-// NOT go higher: Groq's free tier enforces a 12k tokens-per-minute limit and
-// counts max_tokens toward it, so a larger reservation gets rejected with a 413
-// "request too large" before the model even runs.
-const OPENAI_COMPAT_MAX_TOKENS = 8192;
+// Output cap for OpenAI-compat providers. 6144 still gives >1.3x headroom over
+// the longest completion observed (~4.5k tokens). We keep this well below
+// Groq's free-tier 12k tokens-per-minute limit (which counts max_tokens toward
+// it, not just actual usage) so the RESERVATION ITSELF doesn't trip a 413
+// "request too large" on a brand-new key's very first call, before the model
+// even runs.
+const OPENAI_COMPAT_MAX_TOKENS = 6144;
 
 // Shared adapter for OpenAI-compatible providers (OpenRouter & Groq). Both
 // expose /chat/completions with JSON mode. We walk the model chain with one key.

@@ -75,12 +75,23 @@ export async function POST(req: Request) {
     const message =
       err instanceof Error ? err.message : "Gagal generate. Coba lagi.";
     const status =
-      code === "invalid_key" ? 400 : code === "rate_limit" ? 429 : 502;
+      code === "invalid_key"
+        ? 400
+        : code === "rate_limit"
+          ? 429
+          : code === "request_too_large"
+            ? 413
+            : 502;
     // Vercel-log + Sentry (the latter only when SENTRY_DSN is set).
     console.error("[generate]", requestId, code, message);
-    // invalid_key / rate_limit are expected user-state, not incidents — only
-    // report genuine failures to Sentry to keep signal high.
-    if (code !== "invalid_key" && code !== "rate_limit") {
+    // invalid_key / rate_limit / request_too_large are expected user-tier
+    // state, not incidents — only report genuine failures to Sentry to keep
+    // signal high.
+    if (
+      code !== "invalid_key" &&
+      code !== "rate_limit" &&
+      code !== "request_too_large"
+    ) {
       void captureError(err, { requestId, code, userId: user.id });
     }
     return NextResponse.json(
