@@ -21,6 +21,9 @@ next-env.d.ts
 # vercel
 .vercel
 
+# supabase CLI local metadata/cache
+supabase/.temp/
+
 # editor / OS
 .DS_Store
 Thumbs.db
