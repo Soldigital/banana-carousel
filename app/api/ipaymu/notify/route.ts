@@ -21,17 +21,14 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   try {
     let trxId = "";
-    let referenceId = "";
 
     const ct = req.headers.get("content-type") || "";
     if (ct.includes("application/json")) {
       const b = await req.json();
       trxId = String(b.trx_id ?? b.transactionId ?? b.TransactionId ?? "");
-      referenceId = String(b.reference_id ?? b.referenceId ?? "");
     } else {
       const f = await req.formData();
       trxId = String(f.get("trx_id") ?? f.get("transactionId") ?? "");
-      referenceId = String(f.get("reference_id") ?? f.get("referenceId") ?? "");
     }
 
     if (!trxId) return NextResponse.json({ ok: true });
@@ -39,7 +36,11 @@ export async function POST(req: Request) {
     const tx = await checkTransaction(trxId);
     if (!isPaidTransaction(tx)) return NextResponse.json({ ok: true });
 
-    const ref = referenceId || transactionReferenceId(tx);
+    // Reference must come from iPaymu's own authoritative record of this
+    // transaction — never from the (unauthenticated) request body, or an
+    // attacker could pair a cheap paid trxId with someone else's validly
+    // signed referenceId for a pricier plan and get that entitlement for free.
+    const ref = transactionReferenceId(tx);
     const info = verifyRef(ref);
     if (!info) {
       // Paid, but we cannot resolve the buyer (e.g. LICENSE_SECRET rotated since
