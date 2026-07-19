@@ -1,0 +1,65 @@
+import { GoogleGenAI } from "@google/genai";
+import { GEMINI_RESPONSE_SCHEMA } from "@/lib/gemini/schema";
+import { classifyError, GenError } from "../errors";
+import {
+  MODEL_CHAINS,
+  MIN_MODEL_MS,
+  PER_MODEL_CAP_MS,
+  type AiProvider,
+  type GenerateArgs,
+} from "../types";
+
+// Gemini adapter — wraps the existing @google/genai call (schema-enforced JSON)
+// and walks the model fallback chain with a single key.
+
+export const geminiProvider: AiProvider = {
+  id: "gemini",
+  models: MODEL_CHAINS.gemini,
+  async generate({ apiKey, systemPrompt, userPrompt, deadlineMs }: GenerateArgs) {
+    const ai = new GoogleGenAI({ apiKey });
+    let lastError: GenError | null = null;
+
+    for (const model of MODEL_CHAINS.gemini) {
+      // Give this model a hard, cancelling slice of the remaining budget. Gemini
+      // free-tier frequently returns 503 "overloaded" and the SDK retries with
+      // backoff — without this the first model can swallow the whole attempt.
+      const slice = deadlineMs
+        ? Math.min(PER_MODEL_CAP_MS, deadlineMs - Date.now())
+        : PER_MODEL_CAP_MS;
+      if (slice < MIN_MODEL_MS) break;
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: userPrompt,
+          config: {
+            systemInstruction: systemPrompt,
+            responseMimeType: "application/json",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            responseSchema: GEMINI_RESPONSE_SCHEMA as any,
+            temperature: 0.9,
+            topP: 0.95,
+            // ~4k tokens is typical for a full carousel; 8k is ample headroom
+            // and ~2x faster/cheaper than the old 16k cap.
+            maxOutputTokens: 8192,
+            // Real abort: the SDK turns httpOptions.timeout into an
+            // AbortController that cancels the socket at the slice deadline, so a
+            // hung/overloaded model never overruns the attempt budget.
+            httpOptions: { timeout: slice },
+          },
+        });
+        const text = response.text;
+        if (!text) {
+          throw new GenError("Gemini mengembalikan respons kosong.", "parse_error");
+        }
+        return { text, model };
+      } catch (err) {
+        const c = err instanceof GenError ? err : classifyError(err);
+        lastError = c;
+        // A dead key won't get better on another model — bubble up so the
+        // gateway moves to the next key.
+        if (c.code === "invalid_key") throw c;
+      }
+    }
+    throw lastError ?? new GenError("Gemini gagal pada semua model.", "unknown");
+  },
+};

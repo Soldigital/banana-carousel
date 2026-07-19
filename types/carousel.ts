@@ -1,6 +1,18 @@
 export type SlideRole = "hook" | "context" | "value" | "story" | "cta";
 
-export type Language = "en" | "id";
+// "mix" = Bahasa Indonesia as the base, code-mixing common English terms.
+export type Language = "en" | "id" | "mix";
+
+// Username (@handle) watermark placement controls (Phase A / Feature 4).
+export type UsernamePosition =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
+export type UsernameSize = "small" | "medium" | "large";
+export type UsernameStyle = "plain" | "minimal" | "rounded" | "premium";
 
 export type CtaStyle =
   | "follow"
@@ -45,6 +57,8 @@ export interface CarouselOutput {
   caption: string;
 }
 
+export type LogoMode = "default" | "custom" | "none";
+
 export interface GeneratorInput {
   title: string;
   brandName?: string;
@@ -57,6 +71,18 @@ export interface GeneratorInput {
   slideCount: number;
   language: Language;
   ctaStyle: CtaStyle;
+  // Brand Profile (Phase 2) — all optional so existing inputs/history stay valid
+  // and the prompt is byte-identical when these are absent.
+  brandProfileId?: string | null;
+  logoMode?: LogoMode;
+  logoOverridePath?: string | null;
+  // Phase A (V2) — optional brand-context + username-watermark controls. Absent
+  // ⇒ prompt unchanged from before.
+  toneOfVoice?: string;
+  secondaryColors?: string;
+  usernamePosition?: UsernamePosition;
+  usernameSize?: UsernameSize;
+  usernameStyle?: UsernameStyle;
 }
 
 export interface StylePreset {
@@ -68,4 +94,10 @@ export interface StylePreset {
   colorHints: string[];
   visualInstruction: string;
   typographyHint: string;
+  /** Category label used to group presets in the selection grid. */
+  category?: string;
+  /** Short "best for" guidance shown as a tooltip / hint on the card. */
+  bestFor?: string;
+  /** Retired presets: still resolvable via getPresetById, hidden from the grid. */
+  hidden?: boolean;
 }

@@ -14,21 +14,76 @@ import {
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { track } from "@/lib/analytics/track";
+import { USE_PRICING_V2 } from "@/lib/config/flags";
+import { FOUNDING_PRICE, ANNUAL_PRICE, formatIDR } from "@/lib/config/payment";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 interface Props extends Omit<ButtonProps, "onClick"> {
   label?: string;
+  plan?: "lifetime" | "annual";
 }
 
 // Self-contained: a button that opens a small dialog to collect the buyer's
 // email, then creates an iPaymu payment session and redirects to the payment
 // page. Used both on the landing pricing section and the locked generator.
-export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
+// When pricing v2 is on, it shows the live Founding/Lifetime price.
+export function BuyButton({
+  label = "Beli Akses Lifetime",
+  plan = "lifetime",
+  ...rest
+}: Props) {
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
+  const [whatsapp, setWhatsapp] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+  const [price, setPrice] = React.useState(
+    plan === "annual" ? ANNUAL_PRICE : FOUNDING_PRICE,
+  );
+  const [code, setCode] = React.useState("");
+  const [checking, setChecking] = React.useState(false);
+  const [discount, setDiscount] = React.useState<{ price: number; label: string } | null>(
+    null,
+  );
+
+  React.useEffect(() => {
+    if (!USE_PRICING_V2 || plan === "annual") return; // annual = fixed price
+    fetch("/api/founding")
+      .then((r) => r.json())
+      .then((d) => typeof d.price === "number" && setPrice(d.price))
+      .catch(() => {});
+  }, [plan]);
+
+  const effectivePrice = discount?.price ?? price;
+  const priceLabel = formatIDR(effectivePrice) + (plan === "annual" ? "/tahun" : "");
+
+  async function applyCode() {
+    const clean = email.trim().toLowerCase();
+    if (!EMAIL_RE.test(clean)) return toast.error("Masukkan email dulu.");
+    if (!code.trim()) return;
+    setChecking(true);
+    try {
+      const res = await fetch("/api/promo/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim(), email: clean, plan }),
+      });
+      const d = await res.json();
+      if (d.ok && typeof d.discountedPrice === "number") {
+        setDiscount({ price: d.discountedPrice, label: d.label || code.trim() });
+        toast.success("Kode promo dipakai!");
+      } else {
+        setDiscount(null);
+        toast.error(d.reason || "Kode tidak valid.");
+      }
+    } catch {
+      toast.error("Gagal cek kode.");
+    } finally {
+      setChecking(false);
+    }
+  }
 
   async function handleCheckout() {
     const clean = email.trim().toLowerCase();
@@ -37,11 +92,18 @@ export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
       return;
     }
     setBusy(true);
+    track("begin_checkout", { method: "ipaymu" });
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: clean, name: name.trim() }),
+        body: JSON.stringify({
+          email: clean,
+          name: name.trim(),
+          whatsapp: whatsapp.trim(),
+          plan,
+          code: discount ? code.trim().toUpperCase() : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) {
@@ -71,8 +133,8 @@ export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
             <DialogTitle className="text-xl">Beli Akses Lifetime</DialogTitle>
             <DialogDescription>
               Bayar sekali{" "}
-              <span className="font-semibold text-foreground">Rp99.000</span>,
-              akses selamanya. License key dikirim ke email Anda & langsung
+              <span className="font-semibold text-foreground">{priceLabel}</span>
+              , akses selamanya. License key dikirim ke email Anda & langsung
               aktif setelah bayar.
             </DialogDescription>
           </DialogHeader>
@@ -99,6 +161,48 @@ export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="buyer-wa">No. WhatsApp (opsional)</Label>
+              <Input
+                id="buyer-wa"
+                type="tel"
+                inputMode="tel"
+                placeholder="0812xxxxxxxx"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+              />
+            </div>
+            {USE_PRICING_V2 && (
+              <div className="space-y-1.5">
+                <Label htmlFor="buyer-promo">Kode Promo (opsional)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="buyer-promo"
+                    placeholder="HEMAT20"
+                    value={code}
+                    onChange={(e) => {
+                      setCode(e.target.value.toUpperCase());
+                      setDiscount(null);
+                    }}
+                    className="font-mono"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={applyCode}
+                    disabled={checking || !code.trim()}
+                    className="shrink-0"
+                  >
+                    {checking ? <Loader2 className="size-4 animate-spin" /> : "Pakai"}
+                  </Button>
+                </div>
+                {discount && (
+                  <p className="text-xs font-semibold text-emerald-500">
+                    Diskon diterapkan: {discount.label} → {formatIDR(discount.price)}
+                  </p>
+                )}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
               Pembayaran diproses aman lewat iPaymu (transfer bank, e-wallet,
               QRIS, kartu).
@@ -121,7 +225,7 @@ export function BuyButton({ label = "Beli Akses Lifetime", ...rest }: Props) {
                   Mengarahkan...
                 </>
               ) : (
-                "Lanjut Bayar Rp99.000"
+                `Lanjut Bayar ${priceLabel}`
               )}
             </Button>
           </DialogFooter>
