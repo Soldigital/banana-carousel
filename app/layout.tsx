@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import { Toaster } from "sonner";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
@@ -108,6 +109,7 @@ export default function RootLayout({
             />
           </AuthProvider>
         </ThemeProvider>
+        <SpeedInsights />
         <Analytics />
         {tidioKey && (
           <Script src={`//code.tidio.co/${tidioKey}.js`} strategy="lazyOnload" />
