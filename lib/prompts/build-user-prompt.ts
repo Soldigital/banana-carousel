@@ -11,8 +11,22 @@ const CTA_LABELS: Record<string, string> = {
   engagement: "Engagement maksimal (mix follow + save + share)",
 };
 
+// Short label injected wherever the output language is referenced.
+function languageLabel(lang: GeneratorInput["language"]): string {
+  if (lang === "en") return "English";
+  if (lang === "mix")
+    return "Bahasa Indonesia (utama) dengan campuran istilah English yang umum";
+  return "Bahasa Indonesia";
+}
+
 export function buildUserPrompt(input: GeneratorInput): string {
   const preset = getPresetById(input.stylePresetId);
+  const langLabel = languageLabel(input.language);
+  // One detailed rule, added only for the mixed-language mode.
+  const mixRule =
+    input.language === "mix"
+      ? `\n- LANGUAGE MIX RULE: Write headline, body, hook, cta, carousel_title and caption in natural Bahasa Indonesia as the BASE language. Use English ONLY for words/phrases that Indonesian audiences commonly say in English or that sound awkward when translated (e.g. "mindset", "value", "deadline", "self-reward", "branding", "hustle", "insight", "skill"). Keep an Indonesian sentence structure and flow — do NOT write full English sentences and do NOT force-translate those common terms into stiff formal Indonesian. This is natural code-mixing, the way urban Indonesian creators actually speak.`
+      : "";
 
   const customNotes =
     input.customStyleNotes?.trim()
@@ -28,8 +42,44 @@ export function buildUserPrompt(input: GeneratorInput): string {
   const brandBrief = brand
     ? `\n- Brand name / handle: ${brand}`
     : "";
-  const brandWatermark = brand
-    ? `\n- BRAND WATERMARK: Place a small, subtle brand watermark "${brand}" in a consistent corner (e.g. bottom-left) of EVERY slide's visual_prompt. It must be tasteful and unobtrusive — small, low-opacity, never covering the main subject or headline. Mention this watermark explicitly inside each slide's visual_prompt.`
+  // Watermark applies when a brand is set AND the user hasn't explicitly removed
+  // the logo. `logoMode` is undefined for legacy/flag-off inputs, so the
+  // `!== "none"` check preserves the exact previous behavior in that case.
+  const wantWatermark = brand && input.logoMode !== "none";
+  // When the user has an actual brand logo in play (default profile logo or a
+  // per-project upload), nudge the model to use the logo image rather than text.
+  const logoLine =
+    wantWatermark && (input.logoMode === "default" || input.logoMode === "custom")
+      ? ` If a brand logo image is available, place the actual logo (small, low-opacity, in the same corner) instead of rendering the brand name as text.`
+      : "";
+  // Username-position control (Phase A). When NONE of the controls are set the
+  // watermark text is byte-identical to before; otherwise it's parameterized.
+  const STYLE_TEXT: Record<NonNullable<GeneratorInput["usernameStyle"]>, string> = {
+    plain: "plain-text",
+    minimal: "minimal-label",
+    rounded: "rounded-badge",
+    premium: "premium-badge",
+  };
+  const hasUsernameCtrl =
+    !!input.usernamePosition || !!input.usernameSize || !!input.usernameStyle;
+  let brandWatermark = "";
+  if (wantWatermark) {
+    if (hasUsernameCtrl) {
+      const pos = input.usernamePosition ?? "bottom-left";
+      const size = input.usernameSize ?? "small";
+      const styl = STYLE_TEXT[input.usernameStyle ?? "plain"];
+      brandWatermark = `\n- BRAND WATERMARK: Place a ${size}, ${styl} brand/username watermark "${brand}" at the ${pos} corner of EVERY slide's visual_prompt. It must be tasteful and unobtrusive — low-opacity, never covering the main subject or headline. Mention this watermark explicitly inside each slide's visual_prompt.${logoLine}`;
+    } else {
+      brandWatermark = `\n- BRAND WATERMARK: Place a small, subtle brand watermark "${brand}" in a consistent corner (e.g. bottom-left) of EVERY slide's visual_prompt. It must be tasteful and unobtrusive — small, low-opacity, never covering the main subject or headline. Mention this watermark explicitly inside each slide's visual_prompt.${logoLine}`;
+    }
+  }
+
+  // Additive brand-context lines (only when present ⇒ prompt unchanged if absent).
+  const toneLine = input.toneOfVoice?.trim()
+    ? `\n- Brand tone of voice: ${input.toneOfVoice.trim()}`
+    : "";
+  const secondaryLine = input.secondaryColors?.trim()
+    ? `\n- Secondary brand colors: ${input.secondaryColors.trim()} (use as accents alongside the dominant palette)`
     : "";
 
   return `Generate a complete carousel structure for the following creator brief.
@@ -40,8 +90,8 @@ export function buildUserPrompt(input: GeneratorInput): string {
 - Target audience: ${input.audience}
 - Goal of the content: ${input.goal}
 - Number of slides: ${input.slideCount} (slide 1 = hook, slide ${input.slideCount} = cta, slides in between = value/story)
-- Output language for headlines & body: ${input.language === "id" ? "Bahasa Indonesia" : "English"}
-- CTA style: ${input.ctaStyle} (${CTA_LABELS[input.ctaStyle] ?? input.ctaStyle})
+- Output language for headlines & body: ${langLabel}${mixRule}
+- CTA style: ${input.ctaStyle} (${CTA_LABELS[input.ctaStyle] ?? input.ctaStyle})${toneLine}
 
 # Style Direction
 - Selected visual preset: ${preset.name}
@@ -49,15 +99,15 @@ export function buildUserPrompt(input: GeneratorInput): string {
 - Preset mood: ${preset.mood}
 - Preset color hints: ${preset.colorHints.join(", ")}
 - Preset visual instruction (anchor every visual_prompt to this): ${preset.visualInstruction}
-- Preset typography hint: ${preset.typographyHint}${dominantColors}${customNotes}${brandWatermark}
+- Preset typography hint: ${preset.typographyHint}${dominantColors}${secondaryLine}${customNotes}${brandWatermark}
 
 # Requirements
 1. Produce exactly ${input.slideCount} slides in the \`slides\` array.
 2. Strictly follow the storytelling arc (hook → context/value → peak insight → CTA).
 3. Maintain perfect visual consistency across all slides (same palette, same lighting language, same typography family).
 4. Every visual_prompt is in ENGLISH, ultra-detailed, ready for Gemini Imagen.
-5. Headlines and body in ${input.language === "id" ? "Bahasa Indonesia" : "English"} — punchy, scroll-stopping, audience-appropriate.
+5. Headlines and body in ${langLabel} — punchy, scroll-stopping, audience-appropriate.
 6. The \`gemini_ready_prompt\` field is the single most important deliverable — it must be a 600-1500 word, structured, paste-ready master prompt.
-7. The \`caption\` field must be a ready-to-paste Instagram post caption in ${input.language === "id" ? "Bahasa Indonesia" : "English"}: a scroll-stopping hook line, 2-4 lines of value summary, a CTA line matching the "${input.ctaStyle}" CTA style, then a blank line followed by 8-15 relevant hashtags.
+7. The \`caption\` field must be a ready-to-paste Instagram post caption in ${langLabel}: a scroll-stopping hook line, 2-4 lines of value summary, a CTA line matching the "${input.ctaStyle}" CTA style, then a blank line followed by 8-15 relevant hashtags.
 8. Output ONLY the JSON object. No prose, no markdown fences.`;
 }

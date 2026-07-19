@@ -431,3 +431,614 @@ Test dark/light toggle (icon sun/moon di header) → kontras readable di kedua m
 API key Gemini user tetap di browser mereka (encrypted AES-GCM di localStorage) — server Vercel kita tidak pernah lihat key user. Privacy by design.
 Kalau nanti pindah model ke server-side API key (mis. tier Pro di v2), simpan key di Vercel Environment Variables (Settings → Environment Variables) — JANGAN hardcode di kode.
 Kalau ada error di salah satu langkah (push ditolak, build fail di Vercel, dll), kirim screenshot/log-nya — saya bantu diagnose.
+
+
+
+=============================
+# IMPROVEMENT REQUEST — BANANACAROUSEL.CLICK V2
+
+## ROLE
+
+Anda adalah Principal Software Architect, Senior Fullstack Engineer, AI Infrastructure Engineer, SEO Engineer, Growth Engineer, dan Performance Optimization Specialist dengan pengalaman membangun SaaS AI berskala besar.
+
+Lakukan evaluasi menyeluruh terhadap sistem BANANACAROUSEL.CLICK yang sudah berjalan saat ini.
+
+PENTING:
+
+* Jangan mengubah fundamental bisnis aplikasi
+* Jangan mengubah alur utama user
+* Jangan mengubah UX yang sudah baik
+* Fokus pada peningkatan performa, skalabilitas, reliabilitas, SEO, AI SEO, monetisasi iklan, dan infrastruktur AI
+
+---
+
+# PRIORITAS UTAMA
+
+## 1. MULTI AI PROVIDER + MULTI API KEY ROTATION
+
+### Masalah Saat Ini
+
+API Key cepat habis limit sehingga user mengalami:
+
+* gagal generate
+* timeout
+* response lambat
+* downtime saat provider limit
+
+### Solusi Yang Harus Dibangun
+
+Buat AI Gateway Layer terpusat.
+
+### Provider yang wajib didukung
+
+#### Google Gemini
+
+* Gemini 2.5 Flash
+* Gemini 2.5 Pro
+
+#### OpenRouter
+
+Support model:
+
+* Claude
+* GPT
+* Gemini
+* DeepSeek
+* Qwen
+* Mistral
+* model lain dari OpenRouter
+
+#### Groq
+
+Support model:
+
+* Llama
+* DeepSeek
+* Mixtral
+* model lain yang tersedia
+
+---
+
+### Multi API Key Management
+
+Setiap provider harus mendukung:
+
+* hingga 5 API Key
+* mudah ditambah
+* mudah dihapus
+* mudah dinonaktifkan
+
+Contoh:
+
+Gemini:
+
+* key_1
+* key_2
+* key_3
+* key_4
+* key_5
+
+OpenRouter:
+
+* key_1
+* key_2
+* key_3
+* key_4
+* key_5
+
+Groq:
+
+* key_1
+* key_2
+* key_3
+* key_4
+* key_5
+
+---
+
+### Smart Rotation Engine
+
+Jika:
+
+* rate limit
+* quota exceeded
+* timeout
+* provider error
+
+Maka otomatis:
+
+API berikutnya digunakan tanpa user mengetahui.
+
+Flow:
+
+Provider
+→ API Key 1
+→ API Key 2
+→ API Key 3
+→ API Key 4
+→ API Key 5
+→ Provider Berikutnya
+
+---
+
+### Health Monitoring
+
+Dashboard internal:
+
+* status API
+* remaining quota
+* latency
+* success rate
+* error rate
+
+Realtime monitoring.
+
+---
+
+### Fallback System
+
+Jika Gemini gagal:
+
+→ OpenRouter
+
+Jika OpenRouter gagal:
+
+→ Groq
+
+Jika Groq gagal:
+
+→ Provider lain
+
+Tanpa menghentikan proses user.
+
+---
+
+# 2. PERCEPATAN GENERATE MINIMAL 2–5X
+
+Target:
+
+* TTFB sangat cepat
+* streaming output
+* response instan
+
+Implementasikan:
+
+### Streaming Response
+
+Token langsung muncul.
+
+Jangan tunggu selesai.
+
+---
+
+### Prompt Optimization
+
+Kurangi token tidak penting.
+
+Optimalkan system prompt.
+
+---
+
+### Smart Context Compression
+
+Context panjang diringkas otomatis.
+
+---
+
+### Cache Layer
+
+Gunakan:
+
+* Redis
+* KV Cache
+* Edge Cache
+
+Cache:
+
+* prompt
+* hasil generate
+* template
+
+---
+
+### Parallel Processing
+
+Jalankan proses independen secara paralel.
+
+---
+
+### Queue System
+
+Gunakan:
+
+* BullMQ
+* Redis Queue
+
+Untuk job berat.
+
+---
+
+### Lazy Loading
+
+Semua komponen non-kritis.
+
+---
+
+### Edge Deployment
+
+Optimalkan untuk:
+
+* Vercel Edge
+* Cloudflare Edge
+
+---
+
+# 3. FAVICON DAN BRANDING
+
+Tambahkan:
+
+### Favicon
+
+* favicon.ico
+* favicon.svg
+* favicon-16x16
+* favicon-32x32
+* apple-touch-icon
+
+---
+
+### Browser Branding
+
+* Browser Tab Title
+* Meta Theme Color
+* PWA Icon
+
+---
+
+### Social Sharing Preview
+
+OpenGraph:
+
+* title
+* description
+* image
+
+Twitter Card:
+
+* summary_large_image
+
+---
+
+# 4. SEO TERBAIK DI KELASNYA
+
+BANANACAROUSEL.CLICK harus siap ranking Google.
+
+---
+
+## Technical SEO
+
+Implementasikan:
+
+### Sitemap
+
+* sitemap.xml otomatis
+
+### Robots
+
+* robots.txt
+
+### Canonical
+
+* canonical URL
+
+### Structured Data
+
+JSON-LD:
+
+* SoftwareApplication
+* FAQ
+* Organization
+* WebSite
+* Breadcrumb
+
+---
+
+### Metadata Lengkap
+
+Setiap halaman:
+
+* title
+* description
+* keywords
+* og:title
+* og:description
+* og:image
+
+---
+
+### Internal Linking
+
+Bangun otomatis.
+
+---
+
+### Semantic HTML
+
+Gunakan:
+
+* article
+* section
+* header
+* footer
+* nav
+
+---
+
+### Core Web Vitals
+
+Target:
+
+LCP < 2.5s
+
+INP < 200ms
+
+CLS < 0.1
+
+---
+
+### Image Optimization
+
+* WebP
+* AVIF
+* Lazy Load
+
+---
+
+# 5. AI SEO (GENERATIVE ENGINE OPTIMIZATION)
+
+Optimasi agar muncul pada:
+
+* ChatGPT
+* Gemini
+* Claude
+* Perplexity
+* Copilot
+* AI Search Engine
+
+---
+
+Implementasikan:
+
+### llms.txt
+
+### llms-full.txt
+
+### ai-sitemap.xml
+
+---
+
+### Structured Knowledge Layer
+
+Konten harus mudah dipahami AI.
+
+---
+
+### Entity SEO
+
+Perkuat entity:
+
+* BananaCarousel
+* Instagram Carousel Generator
+* AI Carousel Generator
+* Social Media Carousel Creator
+
+---
+
+### FAQ Knowledge Base
+
+Bangun otomatis.
+
+---
+
+### AI Crawl Friendly Architecture
+
+Pastikan seluruh halaman mudah diindeks AI crawler.
+
+---
+
+# 6. OPTIMASI GOOGLE ADS
+
+Website harus mendapatkan skor tinggi untuk Google Ads.
+
+---
+
+### Landing Page Quality
+
+Optimasi:
+
+* relevansi
+* kecepatan
+* UX
+
+---
+
+### Conversion Tracking
+
+Implementasikan:
+
+* Google Ads Conversion
+* Enhanced Conversion
+
+---
+
+### Google Tag Manager
+
+Siapkan penuh.
+
+---
+
+### Event Tracking
+
+Track:
+
+* generate carousel
+* register
+* login
+* upgrade
+* checkout
+
+---
+
+### Remarketing
+
+Support Google Remarketing.
+
+---
+
+# 7. OPTIMASI META ADS
+
+Implementasikan:
+
+### Meta Pixel
+
+### Conversion API
+
+### Event Tracking
+
+* ViewContent
+* Lead
+* Signup
+* Purchase
+* Generate
+
+---
+
+### Advanced Matching
+
+Aktifkan.
+
+---
+
+### Server Side Tracking
+
+Aktifkan.
+
+---
+
+# 8. OPTIMASI TIKTOK ADS
+
+Implementasikan:
+
+### TikTok Pixel
+
+### Events API
+
+### Server Side Tracking
+
+Track:
+
+* signup
+* generate
+* checkout
+* purchase
+
+---
+
+# 9. ANALYTICS STACK
+
+Implementasikan:
+
+### Google Analytics 4
+
+### Microsoft Clarity
+
+### PostHog
+
+### Custom Dashboard
+
+Pantau:
+
+* funnel
+* retention
+* conversion
+* generate rate
+* drop off
+
+---
+
+# 10. SECURITY & SCALABILITY
+
+Implementasikan:
+
+### Rate Limiter
+
+### API Protection
+
+### Secret Manager
+
+### Encryption
+
+### Monitoring
+
+### Error Tracking
+
+Gunakan:
+
+* Sentry
+* Logtail
+
+---
+
+# OUTPUT YANG DIHARAPKAN
+
+Lakukan evaluasi menyeluruh lalu hasilkan:
+
+## A. Audit Sistem Saat Ini
+
+* Temuan
+* Risiko
+* Bottleneck
+
+## B. Prioritas Perbaikan
+
+Urutkan berdasarkan impact terbesar.
+
+## C. Arsitektur Baru
+
+Diagram arsitektur lengkap.
+
+## D. Database Impact
+
+Perubahan schema yang diperlukan.
+
+## E. API Impact
+
+Endpoint baru yang diperlukan.
+
+## F. Deployment Plan
+
+Tahapan implementasi tanpa downtime.
+
+## G. Checklist Implementasi
+
+Checklist detail hingga level developer.
+
+## H. Success Metrics
+
+KPI yang harus dicapai setelah implementasi.
+
+Target akhir:
+
+BANANACAROUSEL.CLICK menjadi aplikasi AI Carousel Generator yang:
+
+* sangat cepat
+* sangat stabil
+* multi provider AI
+* multi API key
+* SEO-ready
+* AI SEO-ready
+* Google Ads-ready
+* Meta Ads-ready
+* TikTok Ads-ready
+* scalable untuk puluhan ribu pengguna
+* siap menjadi market leader di kategorinya.

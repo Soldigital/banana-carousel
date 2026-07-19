@@ -12,15 +12,22 @@ import crypto from "crypto";
 function config() {
   const va = process.env.IPAYMU_VA;
   const apiKey = process.env.IPAYMU_API_KEY;
-  const mode = (process.env.IPAYMU_MODE || "sandbox").toLowerCase();
+  // .trim() guards against a stray space/newline in the env value silently
+  // routing real transactions to sandbox.
+  const mode = (process.env.IPAYMU_MODE || "sandbox").trim().toLowerCase();
   if (!va || !apiKey) {
     throw new Error("IPAYMU_VA / IPAYMU_API_KEY are not set");
+  }
+  if (process.env.NODE_ENV === "production" && mode !== "production") {
+    console.warn(
+      `[ipaymu] NODE_ENV=production but IPAYMU_MODE="${mode}" — using SANDBOX. Set IPAYMU_MODE=production.`,
+    );
   }
   const base =
     mode === "production"
       ? "https://my.ipaymu.com/api/v2"
       : "https://sandbox.ipaymu.com/api/v2";
-  return { va, apiKey, base };
+  return { va, apiKey, base, mode };
 }
 
 function timestamp(): string {
@@ -61,6 +68,7 @@ export interface CreatePaymentArgs {
   referenceId: string;
   buyerName?: string;
   buyerEmail?: string;
+  buyerPhone?: string;
   returnUrl: string;
   notifyUrl: string;
   cancelUrl: string;
@@ -69,6 +77,8 @@ export interface CreatePaymentArgs {
 export async function createPayment(
   args: CreatePaymentArgs,
 ): Promise<{ url: string; sessionId: string }> {
+  const { mode, base } = config();
+  console.info("[ipaymu] createPayment resolved", { mode, base });
   const body: Record<string, unknown> = {
     product: [args.product],
     qty: [args.qty ?? 1],
@@ -80,6 +90,7 @@ export async function createPayment(
   };
   if (args.buyerName) body.buyerName = args.buyerName;
   if (args.buyerEmail) body.buyerEmail = args.buyerEmail;
+  if (args.buyerPhone) body.buyerPhone = args.buyerPhone;
 
   const json = await ipaymuPost("/payment", body);
   if (!json || Number(json.Status) !== 200 || !json.Data?.Url) {
@@ -108,4 +119,11 @@ export function isPaidTransaction(txJson: any): boolean {
 export function transactionReferenceId(txJson: any): string {
   const d = txJson?.Data ?? {};
   return String(d.ReferenceId ?? d.referenceId ?? "");
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function transactionAmount(txJson: any): number {
+  const d = txJson?.Data ?? {};
+  const a = Number(d.Amount ?? d.amount ?? d.Total ?? 0);
+  return Number.isFinite(a) ? a : 0;
 }

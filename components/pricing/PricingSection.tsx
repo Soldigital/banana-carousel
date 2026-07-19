@@ -3,6 +3,8 @@
 import { motion } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
 import { BuyButton } from "./BuyButton";
+import { FoundingBanner } from "./FoundingBanner";
+import { USE_PRICING_V2 } from "@/lib/config/flags";
 
 const BENEFITS = [
   "Akses generator selamanya (lifetime)",
@@ -47,6 +49,8 @@ export function PricingSection() {
           Hemat Rp100.000 — lifetime, sekali bayar
         </p>
 
+        {USE_PRICING_V2 && <FoundingBanner />}
+
         <ul className="mt-6 space-y-2.5">
           {BENEFITS.map((b) => (
             <li key={b} className="flex items-start gap-2.5 text-sm">
@@ -63,6 +67,32 @@ export function PricingSection() {
           Pembayaran aman via iPaymu. License key dikirim ke email Anda.
         </p>
       </motion.div>
+
+      {/* Pro Annual alternative (Phase C) */}
+      {USE_PRICING_V2 && (
+        <div className="mx-auto mt-5 max-w-md rounded-2xl border border-border bg-card/40 p-5">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <span className="inline-flex items-center rounded-full bg-banana/15 px-2.5 py-0.5 text-[11px] font-bold text-banana">
+                🔥 PALING POPULER
+              </span>
+              <p className="mt-1.5 font-display text-lg font-bold">Pro Annual</p>
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">Rp99.000</span>/tahun
+                — semua fitur Pro, perpanjang manual tiap tahun.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <BuyButton
+              plan="annual"
+              label="Langganan Pro Annual"
+              variant="outline"
+              className="w-full"
+            />
+          </div>
+        </div>
+      )}
     </section>
   );
 }

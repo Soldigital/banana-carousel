@@ -34,6 +34,7 @@ Every carousel MUST follow a strong narrative arc:
 # Language Rules
 - \`headline\`, \`body\`, \`hook.headline\`, \`hook.body\`, \`cta.headline\`, \`cta.action\`, \`carousel_title\` follow the requested LANGUAGE field (en or id).
 - When language=id, write headlines in natural, punchy Bahasa Indonesia — NOT translated English. Use slang/colloquialisms appropriate for the audience (e.g. "lo/gue" for muda urban, "kamu/saya" for general).
+- When language=mix, use Bahasa Indonesia as the base language and keep common/technical terms in English where that reads more naturally (e.g. "mindset", "value", "deadline", "self-reward", "branding", "insight") — natural code-mixing the way urban Indonesian creators speak. Never write full English sentences and never force-translate those common terms into stiff Indonesian.
 - \`visual_prompt\`, \`typography_instruction\`, \`layout_instruction\`, \`global_style\`, \`gemini_ready_prompt\` are ALWAYS in English.
 
 # The gemini_ready_prompt Field

@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ paid: false });
     }
 
-    const email = verifyRef(transactionReferenceId(tx)) || "buyer";
+    const email = verifyRef(transactionReferenceId(tx))?.email || "buyer";
     const token = issueLicense(email);
     return NextResponse.json({ paid: true, token, email });
   } catch (err) {

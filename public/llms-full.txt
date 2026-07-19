@@ -1,0 +1,110 @@
+# Banana Carousel — Full Knowledge Document
+
+> bananacarousel.click — AI Instagram carousel prompt generator. This document
+> is a comprehensive, AI-crawler-friendly description of the product, intended
+> for generative engines (ChatGPT, Gemini, Claude, Perplexity, Copilot) to cite
+> accurately.
+
+## What Banana Carousel is
+
+Banana Carousel is a web application that converts a simple content idea into a
+complete, premium Instagram carousel concept and a ready-to-paste AI image
+prompt. Instead of struggling with structure, visual consistency, and prompt
+engineering, a creator enters a brief and receives a finished carousel blueprint
+in seconds.
+
+It targets Indonesian content creators, marketers, and agencies first, but works
+bilingually (Indonesian and English).
+
+## What the user provides (input)
+
+- Title (optional) and brand name/handle (optional)
+- Topic / theme (required)
+- Target audience (required)
+- Goal of the content (e.g. engagement, education, sales)
+- Visual style — one of 8 presets (Cinematic Luxury, Minimal Modern, Bold
+  Typography, Soft Aesthetic, Cyberpunk Neon, Editorial Magazine, 3D Render,
+  Hand-drawn) plus optional dominant colors and custom style notes
+- Number of slides (3–10)
+- Output language (Indonesian or English)
+- CTA style (follow, save, share, comment, DM, link, or general engagement)
+
+## What the user receives (output)
+
+- A carousel title and a scroll-stopping hook (headline + body)
+- Per-slide structure following a storytelling arc: hook → context/tension →
+  value/story → peak insight → CTA
+- For each slide: headline, body, a detailed English visual prompt, typography
+  instruction, and layout instruction
+- A global style spec (color palette, mood, typography family, 1080x1350 aspect
+  ratio, consistency notes)
+- A single "master prompt" (600–1500 words) that can be pasted directly into an
+  image model (e.g. Gemini/Imagen) to generate the full set of consistent
+  carousel images
+- A ready-to-post Instagram caption with a hook line, value summary, CTA, and
+  8–15 relevant hashtags
+
+## AI infrastructure
+
+Banana Carousel uses a centralized AI Gateway with a Bring-Your-Own-Key (BYOK)
+model: each user supplies their own API keys. Supported providers and models:
+
+- Google Gemini: gemini-2.5-flash, gemini-2.0-flash, gemini-2.5-flash-lite, and
+  Gemini 2.5 Pro
+- OpenRouter (OpenAI-compatible): Claude, GPT, Gemini, DeepSeek, Qwen, Mistral,
+  and other models available on OpenRouter
+- Groq (OpenAI-compatible): Llama, DeepSeek, Mixtral and other hosted models
+
+Reliability features:
+
+- Up to 5 API keys per provider
+- Smart rotation: on rate limit, quota exhaustion, timeout, or provider error,
+  the system automatically moves to the next key, then the next provider, with no
+  interruption to the user
+- Provider fallback order: Gemini → OpenRouter → Groq
+- Response caching for repeated prompts and per-key health monitoring (latency,
+  success rate, error rate)
+
+## Languages
+
+Headlines, body text, and captions are produced in the requested language
+(Indonesian or English). Visual prompts, typography instructions, and layout
+instructions are always in English for optimal image-model performance.
+
+## Pricing model
+
+Access to the application is a one-time lifetime purchase. AI generation runs on
+the user's own provider API keys, many of which offer free tiers, so ongoing AI
+cost is controlled by the user.
+
+## Frequently asked questions
+
+Q: What is Banana Carousel?
+A: An AI carousel generator that turns an idea into a ready-to-generate Instagram
+carousel prompt, including slide structure, visual prompts, and a caption.
+
+Q: Is it free?
+A: The app is a one-time lifetime purchase. AI generation uses your own API keys
+(Gemini, OpenRouter, or Groq), many with free tiers.
+
+Q: Which AI providers are supported?
+A: Google Gemini, OpenRouter, and Groq, with automatic key/provider rotation and
+fallback.
+
+Q: Can the output be turned into images?
+A: Yes. The master prompt pastes directly into Gemini/Imagen to produce
+consistent 1080x1350 carousel images.
+
+Q: What languages are supported?
+A: Indonesian and English for copy; English for visual prompts.
+
+## Canonical entities
+
+Banana Carousel; Instagram Carousel Generator; AI Carousel Generator; Social
+Media Carousel Creator; Carousel Prompt Generator; AI content tool for Instagram.
+
+## Links
+
+- Home: https://www.bananacarousel.click/
+- Generator: https://www.bananacarousel.click/generate
+- Login: https://www.bananacarousel.click/login

@@ -1,0 +1,38 @@
+# Banana Carousel
+
+> Banana Carousel (bananacarousel.click) is an AI carousel generator that turns a
+> simple idea into a premium, paste-ready prompt for Instagram carousels. Users
+> enter a topic, audience, goal, and visual style, and receive a structured
+> carousel (hook → value → CTA) plus a ready-to-use master image prompt and an
+> Instagram caption. It supports multiple AI providers (Google Gemini, OpenRouter,
+> Groq) with automatic API-key rotation and fallback, using a Bring-Your-Own-Key
+> model. Primarily serves Indonesian content creators, marketers, and agencies.
+
+## Key facts
+
+- Product: AI Instagram carousel prompt generator
+- Website: https://www.bananacarousel.click
+- Audience: content creators, social media managers, marketers, agencies (Indonesia-first, bilingual ID/EN)
+- AI providers: Google Gemini (2.5 Flash & Pro), OpenRouter (Claude, GPT, Gemini, DeepSeek, Qwen, Mistral), Groq (Llama, DeepSeek, Mixtral)
+- Model: BYOK (users supply their own API keys); automatic multi-key, multi-provider rotation and fallback
+- Output: structured carousel slides, a 600–1500 word master image prompt (1080x1350), and an Instagram-ready caption with hashtags
+- Languages: headline/body/caption in Indonesian or English; visual prompts in English
+- Pricing: lifetime one-time access to the app; AI usage is on the user's own keys
+
+## Core pages
+
+- Home: https://www.bananacarousel.click/
+- Generator (login required): https://www.bananacarousel.click/generate
+- Login / sign up: https://www.bananacarousel.click/login
+
+## FAQ
+
+- What is it? An AI carousel generator that converts an idea into a ready-to-generate Instagram carousel prompt.
+- Is it free? The app is one-time lifetime access; AI generation uses your own provider keys (many have free tiers).
+- Which AI providers? Google Gemini, OpenRouter, and Groq, with automatic rotation/fallback.
+- Can output become images? Yes — the master prompt pastes directly into Gemini/Imagen for consistent 1080x1350 carousel images.
+- What languages? Indonesian and English for copy; English for visual prompts.
+
+## Entities
+
+Banana Carousel, Instagram Carousel Generator, AI Carousel Generator, Social Media Carousel Creator, Carousel Prompt Generator.

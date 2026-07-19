@@ -21,6 +21,7 @@ const MODEL_CHAIN = [
 type GeminiErrorCode =
   | "invalid_key"
   | "rate_limit"
+  | "request_too_large"
   | "model_not_found"
   | "parse_error"
   | "network"
@@ -66,6 +67,16 @@ function classifyError(err: unknown): GeminiError {
     return new GeminiError(
       "Model Gemini yang diminta tidak tersedia di akun Anda.",
       "model_not_found",
+      err,
+    );
+  }
+  // Checked before the rate_limit bucket: a 413/"request too large" means the
+  // request itself didn't fit this account's tier — different remediation
+  // than a rate limit (retrying won't help).
+  if (lower.includes("request too large") || lower.includes("413")) {
+    return new GeminiError(
+      "Permintaan terlalu besar untuk tier akun key ini (bukan rate limit).",
+      "request_too_large",
       err,
     );
   }
@@ -216,8 +227,15 @@ async function callAndParseWithModelChain(
   const rawMsg = rawErrorMessage(lastError?.cause);
   if (lastError?.code === "rate_limit") {
     throw new GeminiError(
-      `Quota Gemini Anda sudah tercapai untuk semua model yang dicoba (${triedModels}). Tunggu beberapa menit lalu coba lagi — untuk akun baru, quota free-tier biasanya reset per menit.`,
+      `Quota Gemini Anda sudah tercapai untuk semua model yang dicoba (${triedModels}). Kalau ini key yang baru dibuat: quota Google kadang terikat ke akun/project Google Cloud, bukan cuma ke key ini — jadi key baru bisa langsung kena walau belum pernah dipakai. Coba tunggu beberapa menit, atau buat key dari project Google yang berbeda, lalu coba lagi.`,
       "rate_limit",
+      lastError.cause,
+    );
+  }
+  if (lastError?.code === "request_too_large") {
+    throw new GeminiError(
+      `Permintaan ke Gemini terlalu besar untuk tier akun key ini (dicoba: ${triedModels}). Ini bukan soal rate limit.${rawMsg ? ` Pesan asli Google: ${rawMsg}` : ""}`,
+      "request_too_large",
       lastError.cause,
     );
   }
