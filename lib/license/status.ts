@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { isOwnerEmail } from "@/lib/config/app";
@@ -33,7 +34,10 @@ const LOGGED_OUT: EntitlementStatus = {
 
 // Resolves the current user's entitlement using the RLS-scoped server client.
 // entitled = owner email OR profiles.is_pro.
-export async function getEntitlement(): Promise<EntitlementStatus> {
+// Wrapped in React's request-scoped cache() so the dashboard shell layout and
+// individual pages can both call this within one request without duplicating
+// the Supabase round-trip — output is byte-identical, this is pure dedup.
+export const getEntitlement = cache(async (): Promise<EntitlementStatus> => {
   if (!hasSupabaseEnv()) return LOGGED_OUT;
 
   const supabase = await createClient();
@@ -91,4 +95,4 @@ export async function getEntitlement(): Promise<EntitlementStatus> {
     founderNumber: profile?.founder_number ?? null,
     tierExpiresAt: expiresAt,
   };
-}
+});

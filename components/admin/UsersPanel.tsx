@@ -4,20 +4,14 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  BarChart3,
-  Check,
   KeyRound,
   Loader2,
   Mail,
-  Megaphone,
   MessageCircle,
   Pencil,
   Plus,
   ShieldAlert,
   ShieldCheck,
-  Trash2,
-  Users,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,16 +24,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyButton } from "@/components/generator/CopyButton";
-import { SalesChart } from "@/components/admin/SalesChart";
-import { PromotionsTab } from "@/components/admin/PromotionsTab";
-import { AffiliatesTab } from "@/components/admin/AffiliatesTab";
-import { USE_PRICING_V2, USE_AFFILIATE } from "@/lib/config/flags";
-import { formatIDR } from "@/lib/config/payment";
-import type { AdminStats, AdminUser, SalesSeries } from "@/lib/data/admin-stats";
-import type { AdminOrder } from "@/lib/data/admin-orders";
-import type { Announcement, TutorialConfig } from "@/lib/data/settings";
+import type { AdminUser } from "@/lib/data/admin-stats";
 
 function waLink(num: string | null | undefined): string | null {
   const d = String(num ?? "").replace(/\D/g, "");
@@ -60,161 +46,12 @@ function fmtDate(iso: string): string {
   }
 }
 
-export function AdminClient({
-  isSuper,
-  stats,
-  sales,
-  users,
-  orders,
-  tutorial,
-  announcement,
-}: {
-  isSuper: boolean;
-  stats: AdminStats;
-  sales: SalesSeries;
-  users: AdminUser[];
-  orders: AdminOrder[];
-  tutorial: TutorialConfig;
-  announcement: Announcement | null;
-}) {
-  return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex items-center gap-2">
-        <h1 className="font-display text-3xl font-bold">
-          {isSuper ? "Super Admin" : "Admin"}
-        </h1>
-        {!isSuper && (
-          <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-xs font-semibold text-purple-400">
-            Supervisor
-          </span>
-        )}
-      </div>
-
-      <Tabs defaultValue={isSuper ? "overview" : "users"}>
-        <TabsList className="flex flex-wrap">
-          {isSuper && (
-            <TabsTrigger value="overview">
-              <BarChart3 className="size-4" /> Ringkasan
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="users">
-            <Users className="size-4" /> User
-          </TabsTrigger>
-          <TabsTrigger value="approval">
-            <Check className="size-4" /> Approval
-            {orders.length > 0 && (
-              <span className="ml-1 rounded-full bg-banana px-1.5 text-[10px] font-bold text-black">
-                {orders.length}
-              </span>
-            )}
-          </TabsTrigger>
-          {isSuper && (
-            <>
-              <TabsTrigger value="add">
-                <Plus className="size-4" /> Tambah User
-              </TabsTrigger>
-              <TabsTrigger value="announce">
-                <Megaphone className="size-4" /> Pengumuman
-              </TabsTrigger>
-              <TabsTrigger value="tutorial">Tutorial</TabsTrigger>
-              {USE_PRICING_V2 && (
-                <TabsTrigger value="promo">Promo</TabsTrigger>
-              )}
-              {USE_AFFILIATE && (
-                <TabsTrigger value="affiliates">Affiliate</TabsTrigger>
-              )}
-            </>
-          )}
-        </TabsList>
-
-        {isSuper && (
-          <TabsContent value="overview">
-            <Overview stats={stats} sales={sales} />
-          </TabsContent>
-        )}
-        <TabsContent value="users">
-          <UsersTab users={users} isSuper={isSuper} />
-        </TabsContent>
-        <TabsContent value="approval">
-          <ApprovalTab orders={orders} />
-        </TabsContent>
-        {isSuper && (
-          <>
-            <TabsContent value="add">
-              <AddUserTab />
-            </TabsContent>
-            <TabsContent value="announce">
-              <AnnouncementTab current={announcement} />
-            </TabsContent>
-            <TabsContent value="tutorial">
-              <TutorialTab current={tutorial} />
-            </TabsContent>
-            {USE_PRICING_V2 && (
-              <TabsContent value="promo">
-                <PromotionsTab />
-              </TabsContent>
-            )}
-            {USE_AFFILIATE && (
-              <TabsContent value="affiliates">
-                <AffiliatesTab />
-              </TabsContent>
-            )}
-          </>
-        )}
-      </Tabs>
-    </div>
-  );
-}
-
-/* ----------------------------- Ringkasan ----------------------------- */
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card/40 p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 font-display text-2xl font-bold">{value}</p>
-    </div>
-  );
-}
-
-function Overview({ stats, sales }: { stats: AdminStats; sales: SalesSeries }) {
-  const [period, setPeriod] = React.useState<"daily" | "weekly" | "monthly">(
-    "daily",
-  );
-  const series =
-    period === "daily" ? sales.daily : period === "weekly" ? sales.weekly : sales.monthly;
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Total Omset" value={formatIDR(stats.totalRevenue)} />
-        <StatCard label="Total User" value={String(stats.userCount)} />
-        <StatCard label="User Pro" value={String(stats.proCount)} />
-        <StatCard label="Transaksi" value={String(stats.paidCount)} />
-      </div>
-
-      <div className="rounded-2xl border border-border bg-card/40 p-5">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <h3 className="font-display font-semibold">Grafik Penjualan</h3>
-          <div className="flex gap-1">
-            {(["daily", "weekly", "monthly"] as const).map((p) => (
-              <Button
-                key={p}
-                size="sm"
-                variant={period === p ? "default" : "outline"}
-                onClick={() => setPeriod(p)}
-              >
-                {p === "daily" ? "Harian" : p === "weekly" ? "Mingguan" : "Bulanan"}
-              </Button>
-            ))}
-          </div>
-        </div>
-        <SalesChart data={series} />
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------- Users ------------------------------- */
-function UsersTab({
+// Extracted verbatim from the former app/admin/AdminClient.tsx `UsersTab` (+
+// its dialogs) — logic unchanged, only relocated to /admin/users. "Tambah
+// User" (formerly its own tab) is folded in here as a dialog per the redesign
+// plan, since it's a micro-action tightly coupled to user management rather
+// than a standalone destination.
+export function UsersPanel({
   users,
   isSuper,
 }: {
@@ -226,6 +63,7 @@ function UsersTab({
   const [emailFor, setEmailFor] = React.useState<AdminUser | null>(null);
   const [waFor, setWaFor] = React.useState<AdminUser | null>(null);
   const [editFor, setEditFor] = React.useState<AdminUser | null>(null);
+  const [addOpen, setAddOpen] = React.useState(false);
   const [busyId, setBusyId] = React.useState<string | null>(null);
 
   const filtered = users.filter(
@@ -293,11 +131,18 @@ function UsersTab({
 
   return (
     <div className="space-y-3">
-      <Input
-        placeholder="Cari email / WhatsApp..."
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Input
+          placeholder="Cari email / WhatsApp..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        {isSuper && (
+          <Button onClick={() => setAddOpen(true)} className="shrink-0">
+            <Plus className="size-4" /> Tambah User
+          </Button>
+        )}
+      </div>
       <p className="text-xs text-muted-foreground">{filtered.length} user</p>
 
       <div className="space-y-2">
@@ -416,6 +261,14 @@ function UsersTab({
         onClose={() => setEditFor(null)}
         onSaved={() => {
           setEditFor(null);
+          router.refresh();
+        }}
+      />
+      <AddUserDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onAdded={() => {
+          setAddOpen(false);
           router.refresh();
         }}
       />
@@ -662,81 +515,18 @@ function EmailDialog({
   );
 }
 
-/* ------------------------------ Approval ----------------------------- */
-function ApprovalTab({ orders }: { orders: AdminOrder[] }) {
-  const router = useRouter();
-  const [busyId, setBusyId] = React.useState<string | null>(null);
-
-  async function act(orderId: string, action: "approve" | "reject") {
-    setBusyId(orderId);
-    try {
-      const res = await fetch(`/api/admin/orders/${action}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || "Gagal.");
-      toast.success(action === "approve" ? "Disetujui." : "Ditolak.");
-      router.refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Gagal.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  if (orders.length === 0)
-    return (
-      <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-        Tidak ada transfer manual menunggu approval. 🎉
-      </div>
-    );
-
-  return (
-    <div className="space-y-4">
-      {orders.map((o) => (
-        <div key={o.id} className="rounded-2xl border border-border bg-card/40 p-5">
-          <div className="flex flex-col gap-4 sm:flex-row">
-            {o.proofSignedUrl ? (
-              <a href={o.proofSignedUrl} target="_blank" rel="noopener noreferrer">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={o.proofSignedUrl}
-                  alt="Bukti"
-                  className="h-32 w-32 rounded-lg border border-border object-cover"
-                />
-              </a>
-            ) : (
-              <div className="flex h-32 w-32 items-center justify-center rounded-lg border border-dashed text-xs text-muted-foreground">
-                Tanpa bukti
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold">{o.name || "(tanpa nama)"}</p>
-              <p className="truncate text-sm text-muted-foreground">{o.email}</p>
-              <p className="text-sm text-muted-foreground">WA: {o.whatsapp || "-"}</p>
-              <p className="mt-1 text-sm font-semibold">{formatIDR(o.amount)}</p>
-              <div className="mt-4 flex gap-2">
-                <Button size="sm" onClick={() => act(o.id, "approve")} disabled={busyId === o.id}>
-                  {busyId === o.id ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-                  Approve
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => act(o.id, "reject")} disabled={busyId === o.id}>
-                  <X className="size-4" /> Tolak
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ----------------------------- Add user ------------------------------ */
-function AddUserTab() {
-  const router = useRouter();
+// Formerly the standalone "Tambah User" tab — folded into a dialog here
+// (logic unchanged) since it's a micro-action on user management, not a
+// standalone sidebar destination.
+function AddUserDialog({
+  open,
+  onClose,
+  onAdded,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onAdded: () => void;
+}) {
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
   const [whatsapp, setWhatsapp] = React.useState("");
@@ -756,7 +546,7 @@ function AddUserTab() {
       setEmail("");
       setName("");
       setWhatsapp("");
-      router.refresh();
+      onAdded();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Gagal");
     } finally {
@@ -765,176 +555,39 @@ function AddUserTab() {
   }
 
   return (
-    <div className="max-w-md space-y-3 rounded-2xl border border-border bg-card/40 p-6">
-      <p className="text-sm text-muted-foreground">
-        Tambah user manual (mis. promo gratis). Akun dibuat + akses Pro lifetime +
-        license key dikirim ke email.
-      </p>
-      <div className="space-y-1.5">
-        <Label htmlFor="au-email">Email *</Label>
-        <Input id="au-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="au-name">Nama</Label>
-        <Input id="au-name" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="au-wa">No. WhatsApp</Label>
-        <Input id="au-wa" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
-      </div>
-      <Button onClick={submit} disabled={busy} className="w-full">
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-        Tambah & Aktifkan Pro
-      </Button>
-    </div>
-  );
-}
-
-/* --------------------------- Announcement ---------------------------- */
-function AnnouncementTab({ current }: { current: Announcement | null }) {
-  const router = useRouter();
-  const [title, setTitle] = React.useState(current?.title ?? "");
-  const [message, setMessage] = React.useState(current?.message ?? "");
-  const [active, setActive] = React.useState(current?.active ?? false);
-  const [busy, setBusy] = React.useState(false);
-
-  async function save() {
-    setBusy(true);
-    try {
-      const res = await fetch("/api/admin/announcement", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, message, active }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      toast.success("Pengumuman disimpan.");
-      router.refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Gagal");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="max-w-md space-y-3 rounded-2xl border border-border bg-card/40 p-6">
-      <p className="text-sm text-muted-foreground">
-        Banner pengumuman (mis. maintenance) tampil di dashboard & generator saat
-        aktif.
-      </p>
-      <div className="space-y-1.5">
-        <Label htmlFor="an-title">Judul</Label>
-        <Input id="an-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="an-msg">Pesan</Label>
-        <Textarea id="an-msg" rows={3} value={message} onChange={(e) => setMessage(e.target.value)} />
-      </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={active}
-          onChange={(e) => setActive(e.target.checked)}
-          className="size-4"
-        />
-        Aktifkan banner
-      </label>
-      <Button onClick={save} disabled={busy} className="w-full">
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <Megaphone className="size-4" />}
-        Simpan Pengumuman
-      </Button>
-    </div>
-  );
-}
-
-/* ----------------------------- Tutorial ------------------------------ */
-function TutorialTab({ current }: { current: TutorialConfig }) {
-  const router = useRouter();
-  const [youtubeId, setYoutubeId] = React.useState(current.youtubeId);
-  const [steps, setSteps] = React.useState(
-    current.steps.length ? current.steps : [{ title: "", body: "" }],
-  );
-  const [busy, setBusy] = React.useState(false);
-
-  function update(i: number, field: "title" | "body", val: string) {
-    setSteps((s) => s.map((x, idx) => (idx === i ? { ...x, [field]: val } : x)));
-  }
-  function addStep() {
-    setSteps((s) => [...s, { title: "", body: "" }]);
-  }
-  function removeStep(i: number) {
-    setSteps((s) => s.filter((_, idx) => idx !== i));
-  }
-
-  async function save() {
-    setBusy(true);
-    try {
-      const res = await fetch("/api/admin/tutorial", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ youtubeId, steps }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      toast.success("Tutorial diperbarui.");
-      router.refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Gagal");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="max-w-2xl space-y-4 rounded-2xl border border-border bg-card/40 p-6">
-      <div className="space-y-1.5">
-        <Label htmlFor="tut-yt">YouTube Video ID</Label>
-        <Input
-          id="tut-yt"
-          placeholder="contoh: L6A0Kh0Iz0U"
-          value={youtubeId}
-          onChange={(e) => setYoutubeId(e.target.value)}
-        />
-        <p className="text-xs text-muted-foreground">
-          ID saja (bagian setelah watch?v= atau youtu.be/).
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Tambah User</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Tambah user manual (mis. promo gratis). Akun dibuat + akses Pro lifetime +
+          license key dikirim ke email.
         </p>
-      </div>
-
-      <div className="space-y-3">
-        <Label>Langkah Tutorial</Label>
-        {steps.map((s, i) => (
-          <div key={i} className="space-y-2 rounded-lg border border-border p-3">
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder={`Judul langkah ${i + 1}`}
-                value={s.title}
-                onChange={(e) => update(i, "title", e.target.value)}
-              />
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => removeStep(i)}
-                aria-label="Hapus langkah"
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-            <Textarea
-              rows={2}
-              placeholder="Isi langkah"
-              value={s.body}
-              onChange={(e) => update(i, "body", e.target.value)}
-            />
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="au-email">Email *</Label>
+            <Input id="au-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
-        ))}
-        <Button variant="outline" size="sm" onClick={addStep}>
-          <Plus className="size-4" /> Tambah Langkah
-        </Button>
-      </div>
-
-      <Button onClick={save} disabled={busy} className="w-full">
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-        Simpan Tutorial
-      </Button>
-    </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="au-name">Nama</Label>
+            <Input id="au-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="au-wa">No. WhatsApp</Label>
+            <Input id="au-wa" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>
+            Batal
+          </Button>
+          <Button onClick={submit} disabled={busy}>
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+            Tambah & Aktifkan Pro
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
