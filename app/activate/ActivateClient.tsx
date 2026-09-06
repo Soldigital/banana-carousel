@@ -6,20 +6,16 @@ import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CopyButton } from "@/components/generator/CopyButton";
 import { ActivateKeyForm } from "@/components/license/ActivateKeyForm";
-import { saveLicense } from "@/lib/license/storage";
-import { useLicenseStore } from "@/lib/store/license-store";
 
 type State =
   | { phase: "verifying" }
-  | { phase: "paid"; token: string; email: string }
+  | { phase: "paid" }
   | { phase: "unpaid" }
   | { phase: "error"; message: string };
 
 export function ActivateClient() {
   const params = useSearchParams();
-  const unlock = useLicenseStore((s) => s.unlock);
   const [state, setState] = React.useState<State>({ phase: "verifying" });
 
   const trxId =
@@ -43,10 +39,8 @@ export function ActivateClient() {
         });
         const data = await res.json();
         if (!active) return;
-        if (res.ok && data.paid && data.token) {
-          saveLicense(data.token);
-          unlock(false);
-          setState({ phase: "paid", token: data.token, email: data.email });
+        if (res.ok && data.paid === true) {
+          setState({ phase: "paid" });
         } else if (res.ok && data.paid === false) {
           setState({ phase: "unpaid" });
         } else {
@@ -59,7 +53,7 @@ export function ActivateClient() {
     return () => {
       active = false;
     };
-  }, [trxId, unlock]);
+  }, [trxId]);
 
   return (
     <div className="mx-auto max-w-md">
@@ -83,25 +77,19 @@ export function ActivateClient() {
             Pembayaran berhasil! 🎉
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Akses lifetime Anda sudah aktif di browser ini. Simpan license key
-            di bawah — juga kami kirim ke{" "}
-            <span className="font-semibold text-foreground">{state.email}</span>.
+            Akun lifetime Anda sudah kami buat. License key dikirim ke email
+            yang Anda pakai saat checkout — cek inbox (dan folder spam).
           </p>
 
-          <div className="mt-5 rounded-xl border border-border bg-card p-3 text-left">
-            <p className="mb-1.5 text-[10px] font-bold tracking-wider text-muted-foreground">
-              LICENSE KEY
+          <div className="mt-5 border-t border-border pt-5 text-left">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">
+              Sudah dapat key via email? Tempel di sini:
             </p>
-            <p className="break-all font-mono text-xs leading-relaxed">
-              {state.token}
-            </p>
-            <div className="mt-3">
-              <CopyButton text={state.token} label="Copy License Key" />
-            </div>
+            <ActivateKeyForm />
           </div>
 
-          <Button asChild size="lg" className="mt-6 w-full">
-            <Link href="/generate">Mulai Generate →</Link>
+          <Button asChild variant="outline" size="lg" className="mt-5 w-full">
+            <Link href="/login">Login pakai email →</Link>
           </Button>
         </motion.div>
       )}

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminUser } from "@/lib/auth/admin";
+import { getSuperAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { issueLicense } from "@/lib/license/token";
 import { sendLicenseEmail } from "@/lib/email/send-license";
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 // Resend the user's license key to their email (issuing one if missing).
 export async function POST(req: Request) {
-  const admin = await getAdminUser();
+  const admin = await getSuperAdminUser();
   if (!admin) return NextResponse.json({ error: "Bukan admin." }, { status: 403 });
 
   try {

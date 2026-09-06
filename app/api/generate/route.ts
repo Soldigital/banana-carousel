@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
+import { getEntitlement } from "@/lib/license/status";
 import { loadUserKeys } from "@/lib/ai/load-keys";
 import { runGateway } from "@/lib/ai/gateway";
 import { GenError } from "@/lib/ai/errors";
@@ -25,6 +26,18 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Silakan login dulu." }, { status: 401 });
+  }
+
+  // Paywall. The /generate PAGE redirects non-entitled users, but the page is
+  // not the security boundary — this route is directly callable. getEntitlement()
+  // also covers `banned`, so a banned account is rejected here too. Same pattern
+  // as /api/brand-profiles/dna and /api/affiliate.
+  const status = await getEntitlement();
+  if (!status.entitled) {
+    return NextResponse.json(
+      { error: "Butuh akses Pro untuk generate.", code: "forbidden" },
+      { status: 403 },
+    );
   }
 
   const rl = await rateLimit(`gen:${user.id}`, { limit: 20, window: "60 s" });

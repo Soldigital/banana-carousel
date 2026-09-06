@@ -14,16 +14,26 @@ export interface AdminUser {
   created_at: string;
 }
 
-export async function listUsers(limit = 500): Promise<AdminUser[]> {
+// `access_code` is a customer's live license key — possession of one is enough
+// to mint a session via /api/auth/license-login. It is therefore opt-in and only
+// ever requested by the owner-gated users page, so a lower-privileged caller
+// cannot serialize 500 customers' keys into a client payload by accident.
+export async function listUsers(
+  opts: { limit?: number; includeAccessCode?: boolean } = {},
+): Promise<AdminUser[]> {
+  const { limit = 500, includeAccessCode = false } = opts;
   const admin = createAdminClient();
+  const columns = [
+    "id,email,name,whatsapp,is_pro,banned,is_admin,role,created_at",
+    ...(includeAccessCode ? ["access_code"] : []),
+  ].join(",");
   const { data } = await admin
     .from("profiles")
-    .select(
-      "id,email,name,whatsapp,is_pro,banned,is_admin,role,access_code,created_at",
-    )
+    .select(columns)
     .order("created_at", { ascending: false })
     .limit(limit);
-  return (data as AdminUser[]) ?? [];
+  const rows = (data ?? []) as unknown as Omit<AdminUser, "access_code">[];
+  return rows.map((r) => ({ access_code: null, ...r }));
 }
 
 export interface AdminStats {

@@ -93,14 +93,18 @@ create policy profiles_select_own on public.profiles
 -- Remove the unsafe self-update policy if it was created by an earlier run.
 drop policy if exists profiles_update_own on public.profiles;
 
--- orders: a user can read & insert their own; status changes only via service role
+-- orders: a user can READ only their own. There is deliberately NO user INSERT
+-- policy — a WITH CHECK on user_id alone would not constrain status/amount, so
+-- a user could insert their own {status:'approved', amount:0} row and have
+-- reconcileOnLogin() (service role) promote them to is_pro. All order writes go
+-- via service role (grantEntitlementByEmail, /api/manual-order), which bypasses
+-- RLS, so no legitimate path needs one. See 0015_secure_orders_insert.sql.
 drop policy if exists orders_select_own on public.orders;
 create policy orders_select_own on public.orders
   for select using (auth.uid() = user_id);
 
+-- Remove the unsafe self-insert policy if it was created by an earlier run.
 drop policy if exists orders_insert_own on public.orders;
-create policy orders_insert_own on public.orders
-  for insert with check (auth.uid() = user_id);
 
 -- carousels: full ownership (select/insert/update/delete) of own rows
 drop policy if exists carousels_all_own on public.carousels;
