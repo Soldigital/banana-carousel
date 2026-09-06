@@ -38,7 +38,10 @@ const GATEWAY_BUDGET_MS = 52_000;
 // (PER_MODEL_CAP_MS), a slow key now fails fast and we reach 4-6 candidates
 // within budget instead of only 2-3. A healthy Gemini-Flash / Groq call with
 // the 8k-token cap finishes well within this.
-const PER_ATTEMPT_MS = 15_000;
+// Must exceed PER_MODEL_CAP_MS, otherwise the attempt deadline pre-empts the
+// per-model abort and every slow-but-healthy call dies at the attempt boundary
+// (which is what produced the run of exactly-15001ms OpenRouter timeouts).
+const PER_ATTEMPT_MS = 18_000;
 const MIN_ATTEMPT_MS = 7_000;
 // When a business fallback is available, hold back this much budget so the
 // emergency call can still run after the user's own keys are exhausted.
@@ -250,7 +253,8 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
         userId,
         provider: pid,
         keyId: key.id,
-        model: null,
+        // The model the provider actually failed on, when it reported one.
+        model: c.model ?? null,
         ok: false,
         latencyMs: Date.now() - started,
         errorCode: c.code,

@@ -54,6 +54,7 @@ export const geminiProvider: AiProvider = {
         return { text, model };
       } catch (err) {
         const c = err instanceof GenError ? err : classifyError(err);
+        c.model = c.model ?? model;
         lastError = c;
         // A dead key won't get better on another model — bubble up so the
         // gateway moves to the next key.
