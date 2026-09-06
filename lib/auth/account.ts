@@ -39,12 +39,30 @@ export async function ensureAccountForEmail(
     userId = profile?.id ?? null;
   }
 
-  // Persist name / WhatsApp on the profile (best-effort).
+  // Persist name / WhatsApp on the profile (best-effort) — FILL ONLY, never
+  // overwrite. This helper is reached from UNAUTHENTICATED routes (/api/checkout,
+  // /api/manual-order) where the target account is resolved purely from a
+  // client-supplied email. Blindly patching would let anyone rewrite any user's
+  // name and WhatsApp number through the service-role client — precisely the
+  // write that RLS deliberately forbids (profiles has no user UPDATE policy).
+  // Writing only into empty columns keeps the "capture buyer details" behaviour
+  // for genuinely new buyers while making an established profile immutable from
+  // these routes. The order row still records the submitted name/whatsapp
+  // verbatim, so nothing is lost for admin review.
   if (userId && (opts.whatsapp || opts.name)) {
+    const { data: current } = await admin
+      .from("profiles")
+      .select("name, whatsapp")
+      .eq("id", userId)
+      .maybeSingle();
+
     const patch: { whatsapp?: string; name?: string } = {};
-    if (opts.whatsapp) patch.whatsapp = opts.whatsapp;
-    if (opts.name) patch.name = opts.name;
-    await admin.from("profiles").update(patch).eq("id", userId);
+    if (opts.whatsapp && !current?.whatsapp) patch.whatsapp = opts.whatsapp;
+    if (opts.name && !current?.name) patch.name = opts.name;
+
+    if (Object.keys(patch).length) {
+      await admin.from("profiles").update(patch).eq("id", userId);
+    }
   }
 
   return userId;

@@ -71,8 +71,16 @@ function parseDNA(text: string): BrandDNA | null {
 }
 
 const PER_CALL_MS = 18_000;
+// Route sets maxDuration = 60. Stay clearly inside it so we always return a
+// real JSON error rather than being killed by the platform mid-response.
+const TOTAL_BUDGET_MS = 50_000;
+const MIN_ATTEMPT_MS = 6_000;
 
-async function callGemini(apiKey: string, user: string): Promise<string> {
+async function callGemini(
+  apiKey: string,
+  user: string,
+  timeoutMs: number = PER_CALL_MS,
+): Promise<string> {
   const ai = new GoogleGenAI({ apiKey });
   const res = await ai.models.generateContent({
     model: MODEL_CHAINS.gemini[0],
@@ -82,7 +90,7 @@ async function callGemini(apiKey: string, user: string): Promise<string> {
       responseMimeType: "application/json",
       temperature: 0.7,
       maxOutputTokens: 2048,
-      httpOptions: { timeout: PER_CALL_MS },
+      httpOptions: { timeout: timeoutMs },
     },
   });
   return res.text ?? "";
@@ -92,6 +100,7 @@ async function callOpenAICompat(
   pid: "groq" | "openrouter",
   apiKey: string,
   user: string,
+  timeoutMs: number = PER_CALL_MS,
 ): Promise<string> {
   const client = new OpenAI({
     apiKey,
@@ -109,7 +118,7 @@ async function callOpenAICompat(
       max_tokens: 2048,
       response_format: { type: "json_object" },
     },
-    { signal: AbortSignal.timeout(PER_CALL_MS), timeout: PER_CALL_MS },
+    { signal: AbortSignal.timeout(timeoutMs), timeout: timeoutMs },
   );
   return completion.choices[0]?.message?.content ?? "";
 }
@@ -124,25 +133,52 @@ export async function generateBrandDNA(
   const user = buildUser(input);
   const order: ProviderId[] = ["gemini", "groq", "openrouter"];
 
+  // TOTAL budget, not just a per-call cap. Rotating over every key of every
+  // provider at PER_CALL_MS each is up to 15 x 18s = 270s against this route's
+  // 60s maxDuration: Vercel kills the function mid-flight, the browser receives
+  // an HTML error page, and res.json() throws on the client. Stop early and
+  // return a real error instead. Mirrors GATEWAY_BUDGET_MS in lib/ai/gateway.ts.
+  const startedAt = Date.now();
+  const remaining = () => TOTAL_BUDGET_MS - (Date.now() - startedAt);
+
   let tried = 0;
-  for (const pid of order) {
+  let lastError: unknown = null;
+  let budgetExhausted = false;
+
+  outer: for (const pid of order) {
     for (const key of keys[pid] ?? []) {
+      // Leave enough room for a call to be worth starting at all.
+      if (remaining() < MIN_ATTEMPT_MS) {
+        budgetExhausted = true;
+        break outer;
+      }
       tried++;
       try {
+        const slice = Math.min(PER_CALL_MS, remaining());
         const text =
           pid === "gemini"
-            ? await callGemini(key.plaintext, user)
-            : await callOpenAICompat(pid, key.plaintext, user);
+            ? await callGemini(key.plaintext, user, slice)
+            : await callOpenAICompat(pid, key.plaintext, user, slice);
         const dna = parseDNA(text);
         if (dna) return dna;
-      } catch {
-        /* rotate to the next key/provider */
+      } catch (err) {
+        // Keep the real provider error so the message below can be specific
+        // rather than a blanket "coba lagi".
+        lastError = err;
       }
     }
   }
-  throw new Error(
-    tried === 0
-      ? "Belum ada API key aktif. Tambahkan minimal satu key di dashboard."
-      : "Gagal generate Brand DNA. Coba lagi sebentar.",
-  );
+
+  if (tried === 0) {
+    throw new Error(
+      "Belum ada API key aktif. Tambahkan minimal satu key di dashboard.",
+    );
+  }
+  if (budgetExhausted) {
+    throw new Error(
+      "Generate Brand DNA melebihi batas waktu. Nonaktifkan key yang lambat atau coba lagi.",
+    );
+  }
+  const detail = lastError instanceof Error ? ` (${lastError.message})` : "";
+  throw new Error(`Gagal generate Brand DNA. Coba lagi sebentar.${detail}`);
 }

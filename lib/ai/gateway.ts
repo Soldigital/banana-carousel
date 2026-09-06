@@ -150,8 +150,9 @@ export async function runGateway(args: GatewayArgs): Promise<GatewayResult> {
   const systemPrompt = SYSTEM_PROMPT;
   const userPrompt = buildUserPrompt(input);
 
-  // 1. Cache lookup (shared across users — keyed by prompt+input only).
-  const ck = cacheKey(systemPrompt, input);
+  // 1. Cache lookup. Keyed per user, so a hit can only ever be this user's own
+  //    earlier result - never another tenant's carousel.
+  const ck = cacheKey(userId, systemPrompt, input);
   const cachedHit = await getCached(ck);
   if (cachedHit) {
     return {
