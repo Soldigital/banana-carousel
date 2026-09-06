@@ -24,14 +24,38 @@ export const PROVIDER_KEY_URLS: Record<ProviderId, string> = {
 
 // Per-provider ordered model fallback chain. The provider adapter walks this
 // list, moving to the next model on model_not_found / transient errors.
+// Model fallback chains, best-first.
+//
+// These MUST be kept current: providers retire model ids, and a retired id
+// returns 404, which the gateway surfaces as "model_not_found" after burning
+// the whole rotation. That is exactly what happened in Sep 2026 — every chain
+// below had gone stale at once:
+//   - Groq deprecated llama-3.3-70b-versatile and llama-3.1-8b-instant for
+//     free/developer tier on 2026-06-17 (verified against a live key: neither
+//     id is returned by GET /models any more).
+//   - gemini-2.0-flash is shut down, and gemini-2.5-flash / -flash-lite are
+//     retiring 2026-10-16 with reports of earlier unavailability.
 export const MODEL_CHAINS: Record<ProviderId, string[]> = {
-  gemini: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite"],
+  // gemini-2.5-flash is kept as a LAST-RESORT entry: the 3.x ids could not be
+  // verified against a live key from here, and if a given key's tier cannot see
+  // them they 404 fast and cost almost nothing to skip. Remove it after its
+  // 2026-10-16 retirement.
+  gemini: [
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+  ],
   openrouter: [
-    "google/gemini-2.5-flash",
+    // OpenRouter still resolves the 2.5 ids, but they inherit Google's
+    // retirement date, so point at the current generation instead.
+    "google/gemini-3.5-flash",
     "openai/gpt-4o-mini",
     "deepseek/deepseek-chat",
   ],
-  groq: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+  // gpt-oss-120b is first: 20b failed JSON-mode validation even on a trivial
+  // prompt, so it is a last resort rather than the fast default.
+  groq: ["openai/gpt-oss-120b", "openai/gpt-oss-20b"],
 };
 
 // OpenAI-compatible base URLs (OpenRouter & Groq).
@@ -44,7 +68,11 @@ export const PROVIDER_BASE_URLS: Partial<Record<ProviderId, string>> = {
 // ABORTED (the underlying socket is cancelled) and the chain moves on. This is
 // what keeps one slow/overloaded model from eating an entire attempt's budget,
 // so the gateway can reach many more keys within its global deadline.
-export const PER_MODEL_CAP_MS = 11_000;
+// Measured: a full 5-slide carousel on openai/gpt-oss-120b takes ~11.0s. At the
+// previous 11s cap the abort fired at almost exactly the moment a healthy call
+// was completing, so normal generations were being killed and logged as
+// timeouts. 15s leaves real headroom while still capping a hung model.
+export const PER_MODEL_CAP_MS = 15_000;
 // Below this much remaining time, don't even start another model — there isn't
 // enough budget for a useful attempt.
 export const MIN_MODEL_MS = 2_000;

@@ -42,6 +42,56 @@ ${JSON.stringify(GEMINI_RESPONSE_SCHEMA)}
 // it, not just actual usage) so the RESERVATION ITSELF doesn't trip a 413
 // "request too large" on a brand-new key's very first call, before the model
 // even runs.
+// OpenAI-style strict structured output. Groq (and OpenRouter, per model)
+// enforce the schema server-side when given response_format:"json_schema" —
+// far more reliable than asking the model to comply in the prompt. Their strict
+// mode requires every object to set additionalProperties:false and to list all
+// of its properties in `required`, which this derives from our Zod-generated
+// schema.
+//
+// This matters: with prompt-only json_object, openai/gpt-oss-120b returned
+// valid JSON that was missing the required top-level "hook" and "cta" keys.
+// With strict mode the same model produces a fully schema-valid carousel.
+type JsonSchemaNode = { [key: string]: unknown };
+
+function toStrictJsonSchema(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(toStrictJsonSchema);
+  if (!node || typeof node !== "object") return node;
+  const out: JsonSchemaNode = { ...(node as JsonSchemaNode) };
+  for (const k of Object.keys(out)) out[k] = toStrictJsonSchema(out[k]);
+  if (
+    String(out.type ?? "").toLowerCase() === "object" &&
+    out.properties &&
+    typeof out.properties === "object"
+  ) {
+    out.additionalProperties = false;
+    out.required = Object.keys(out.properties as JsonSchemaNode);
+  }
+  return out;
+}
+
+const STRICT_RESPONSE_FORMAT = {
+  type: "json_schema" as const,
+  json_schema: {
+    name: "carousel",
+    strict: true,
+    schema: toStrictJsonSchema(GEMINI_RESPONSE_SCHEMA) as JsonSchemaNode,
+  },
+};
+
+// Not every OpenRouter-routed model accepts json_schema; those reject the
+// request outright (HTTP 400 naming response_format/json_schema) rather than
+// producing bad output, so we can safely retry that one model with plain JSON
+// mode plus the prompt-level schema instruction.
+function isUnsupportedResponseFormat(err: unknown): boolean {
+  const m = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return (
+    m.includes("response_format") ||
+    m.includes("json_schema") ||
+    m.includes("json schema")
+  );
+}
+
 const OPENAI_COMPAT_MAX_TOKENS = 6144;
 
 // Shared adapter for OpenAI-compatible providers (OpenRouter & Groq). Both
@@ -77,21 +127,38 @@ export function makeOpenAICompatProvider(id: ProviderId): AiProvider {
           ? Math.min(PER_MODEL_CAP_MS, deadlineMs - Date.now())
           : PER_MODEL_CAP_MS;
         if (slice < MIN_MODEL_MS) break;
-        try {
-          const completion = await client.chat.completions.create(
+        const call = (strict: boolean) =>
+          client.chat.completions.create(
             {
               model,
               messages: [
-                { role: "system", content: systemPrompt + SCHEMA_INSTRUCTION },
+                {
+                  role: "system",
+                  // With server-side schema enforcement the long prompt-level
+                  // schema restatement is redundant; keep it only for the
+                  // json_object fallback.
+                  content: strict ? systemPrompt : systemPrompt + SCHEMA_INSTRUCTION,
+                },
                 { role: "user", content: userPrompt },
               ],
               temperature: 0.9,
               top_p: 0.95,
               max_tokens: OPENAI_COMPAT_MAX_TOKENS,
-              response_format: { type: "json_object" },
+              response_format: strict
+                ? STRICT_RESPONSE_FORMAT
+                : { type: "json_object" as const },
             },
             { signal: AbortSignal.timeout(slice), timeout: slice },
           );
+
+        try {
+          let completion;
+          try {
+            completion = await call(true);
+          } catch (err) {
+            if (!isUnsupportedResponseFormat(err)) throw err;
+            completion = await call(false);
+          }
           const text = completion.choices[0]?.message?.content;
           if (!text) {
             throw new GenError(`${id} mengembalikan respons kosong.`, "parse_error");
@@ -99,6 +166,7 @@ export function makeOpenAICompatProvider(id: ProviderId): AiProvider {
           return { text, model };
         } catch (err) {
           const c = err instanceof GenError ? err : classifyError(err);
+          c.model = c.model ?? model;
           lastError = c;
           if (c.code === "invalid_key") throw c;
         }

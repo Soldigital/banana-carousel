@@ -17,6 +17,10 @@ export class GenError extends Error {
     message: string,
     public readonly code: GenErrorCode,
     public readonly cause?: unknown,
+    // Which model id produced this error, when known. Recorded in
+    // ai_key_health so a retired/renamed model is visible in the data instead
+    // of having to be inferred from latency.
+    public model?: string | null,
   ) {
     super(message);
     this.name = "GenError";
