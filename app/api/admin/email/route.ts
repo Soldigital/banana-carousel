@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminUser } from "@/lib/auth/admin";
+import { getSuperAdminUser } from "@/lib/auth/admin";
 import { sendEmail } from "@/lib/email/send-email";
 
 export const runtime = "nodejs";
@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export async function POST(req: Request) {
-  const admin = await getAdminUser();
+  const admin = await getSuperAdminUser();
   if (!admin) return NextResponse.json({ error: "Bukan admin." }, { status: 403 });
 
   try {

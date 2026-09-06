@@ -87,6 +87,9 @@ export function HistoryPanel() {
   const [hasMore, setHasMore] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [loadingMore, setLoadingMore] = React.useState(false);
+  // Latched pagination failure. Without it a failed page request retries on
+  // every render (see loadMore below).
+  const [loadMoreError, setLoadMoreError] = React.useState(false);
   const [opening, setOpening] = React.useState<string | null>(null);
   const [confirm, setConfirm] = React.useState<
     null | { kind: "permanent"; id: string; title: string } | { kind: "empty" }
@@ -127,6 +130,7 @@ export function HistoryPanel() {
   React.useEffect(() => {
     const id = ++reqId.current;
     setLoading(true);
+    setLoadMoreError(false);
     fetch(buildUrl(null))
       .then((r) => r.json())
       .then((data) => {
@@ -148,20 +152,35 @@ export function HistoryPanel() {
   }, [buildUrl]);
 
   const loadMore = React.useCallback(() => {
-    if (!hasMore || loadingMore || !cursor) return;
+    if (!hasMore || loadingMore || loadMoreError || !cursor) return;
     const id = reqId.current;
     setLoadingMore(true);
     fetch(buildUrl(cursor))
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         if (id !== reqId.current) return;
         setRows((prev) => [...prev, ...(data.rows ?? [])]);
         setCursor(data.nextCursor ?? null);
         setHasMore(Boolean(data.nextCursor));
       })
-      .catch(() => {})
+      .catch(() => {
+        // Swallowing this used to spin: cursor/hasMore stayed untouched, so the
+        // scroll effect below (which re-runs every render, because
+        // getVirtualItems() returns a fresh array identity) called loadMore()
+        // again immediately and hammered /api/carousels. Latch the failure and
+        // surface a retry instead.
+        if (id !== reqId.current) return;
+        setLoadMoreError(true);
+      })
       .finally(() => setLoadingMore(false));
-  }, [hasMore, loadingMore, cursor, buildUrl]);
+  }, [hasMore, loadingMore, loadMoreError, cursor, buildUrl]);
+
+  const retryLoadMore = React.useCallback(() => {
+    setLoadMoreError(false);
+  }, []);
 
   // Virtualized list.
   const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -455,6 +474,14 @@ export function HistoryPanel() {
               {loadingMore && (
                 <div className="flex items-center justify-center p-3 text-xs text-muted-foreground">
                   <Loader2 className="mr-2 size-3 animate-spin" /> Memuat lagi…
+                </div>
+              )}
+              {loadMoreError && !loadingMore && (
+                <div className="flex items-center justify-center gap-2 p-3 text-xs text-muted-foreground">
+                  <span>Gagal memuat halaman berikutnya.</span>
+                  <Button variant="outline" size="sm" onClick={retryLoadMore}>
+                    Coba lagi
+                  </Button>
                 </div>
               )}
             </div>

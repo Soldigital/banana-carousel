@@ -1,11 +1,20 @@
+import fs from "node:fs";
+import path from "node:path";
 import { ImageResponse } from "next/og";
-import { SITE_NAME } from "@/lib/seo/site";
 
 // Default social-share card (OpenGraph + Twitter). Next auto-wires this for
 // every page that doesn't define its own.
+export const runtime = "nodejs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "Banana Carousel — AI Prompt Generator untuk Carousel Instagram";
+
+// Satori cannot fetch by URL here, so the lockup is inlined as a data URI. The
+// card sits on #0A0A0A, hence the dark variant (white "Banana").
+function wordmarkDataUri(): string {
+  const file = path.join(process.cwd(), "public", "brand", "wordmark-dark.png");
+  return `data:image/png;base64,${fs.readFileSync(file).toString("base64")}`;
+}
 
 export default function OpengraphImage() {
   return new ImageResponse(
@@ -22,26 +31,8 @@ export default function OpengraphImage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", marginBottom: 40 }}>
-          <div
-            style={{
-              width: 104,
-              height: 104,
-              borderRadius: 26,
-              background: "linear-gradient(135deg, #FDE047, #F59E0B)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 56,
-              fontWeight: 900,
-              color: "#0A0A0A",
-              marginRight: 28,
-            }}
-          >
-            BC
-          </div>
-          <div style={{ fontSize: 44, fontWeight: 700, color: "#ffffff" }}>
-            {SITE_NAME}
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={wordmarkDataUri()} alt="Banana Carousel" width={428} height={120} />
         </div>
         <div
           style={{

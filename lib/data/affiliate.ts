@@ -172,11 +172,16 @@ export async function applyReferralOnGrant(
     }
     const { data: aff } = await admin
       .from("affiliates")
-      .select("id, user_id, reward_type, commission_rate, referral_count, balance")
+      .select("id, user_id, reward_type, commission_rate")
       .eq("id", affId)
       .maybeSingle();
     if (aff) {
-      const count = (aff.referral_count ?? 0) + 1;
+      // referral_count / balance are incremented IN THE DATABASE
+      // (increment_affiliate_reward, migration 0016). Computing the new value in
+      // JS and writing it back lost a commission whenever two conversions for
+      // the same affiliate landed concurrently — both read the same old balance
+      // and the second write overwrote the first. This is a payout ledger, so
+      // the increment has to be atomic.
       if (aff.reward_type === "commission") {
         const amount = Math.round((aff.commission_rate ?? 0) * (orderAmount ?? 0));
         await admin.from("affiliate_earnings").insert({
@@ -185,10 +190,10 @@ export async function applyReferralOnGrant(
           order_trx: orderTrx,
           amount,
         });
-        await admin
-          .from("affiliates")
-          .update({ referral_count: count, balance: (aff.balance ?? 0) + amount })
-          .eq("id", affId);
+        await admin.rpc("increment_affiliate_reward", {
+          p_affiliate_id: affId,
+          p_amount: amount,
+        });
       } else {
         // bonus: extend the affiliate's own annual access (+days). Inert for
         // lifetime/founding (they never expire) — counted only.
@@ -206,7 +211,11 @@ export async function applyReferralOnGrant(
           ).toISOString();
           await admin.from("profiles").update({ tier_expires_at: next }).eq("id", aff.user_id);
         }
-        await admin.from("affiliates").update({ referral_count: count }).eq("id", affId);
+        // Bonus reward: count the referral, no money moves.
+        await admin.rpc("increment_affiliate_reward", {
+          p_affiliate_id: affId,
+          p_amount: 0,
+        });
       }
     }
     await admin.from("pending_referrals").delete().eq("email", buyerEmail);

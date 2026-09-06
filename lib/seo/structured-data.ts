@@ -73,7 +73,8 @@ export function organizationLd() {
     "@type": "Organization",
     name: SITE_NAME,
     url: SITE_URL,
-    logo: `${SITE_URL}/icon.svg`,
+    // Google prefers a real raster logo it can crop; icon.svg no longer exists.
+    logo: `${SITE_URL}/brand/icon-512.png`,
     description: SITE_DESCRIPTION,
   };
 }

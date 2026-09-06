@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
-import {
-  checkTransaction,
-  isPaidTransaction,
-  transactionReferenceId,
-} from "@/lib/ipaymu/client";
-import { issueLicense, verifyRef } from "@/lib/license/token";
+import { checkTransaction, isPaidTransaction } from "@/lib/ipaymu/client";
 
 export const runtime = "nodejs";
 
 // Called by the /activate page after iPaymu redirects the buyer back.
-// Confirms payment server-to-server, then issues the lifetime license token.
+// Confirms payment status server-to-server — and NOTHING ELSE.
+//
+// This route is unauthenticated and cannot be otherwise: the buyer may not have
+// a session yet. It therefore must never hand out credentials. It previously
+// returned {token, email}, which meant anyone who guessed a paid trxId (numeric
+// and enumerable) received the buyer's email plus a valid lifetime license
+// token bound to them — and /api/auth/license-login converts such a token into
+// a real Supabase session, i.e. full takeover of a paying customer's account.
+//
+// Delivery of the license is the webhook's job (app/api/ipaymu/notify), which
+// verifies the transaction against iPaymu's own record, creates the account and
+// emails the key. Here we only answer "has this transaction been paid?".
 export async function POST(req: Request) {
   try {
     const { trxId } = await req.json();
@@ -19,13 +25,7 @@ export async function POST(req: Request) {
     }
 
     const tx = await checkTransaction(id);
-    if (!isPaidTransaction(tx)) {
-      return NextResponse.json({ paid: false });
-    }
-
-    const email = verifyRef(transactionReferenceId(tx))?.email || "buyer";
-    const token = issueLicense(email);
-    return NextResponse.json({ paid: true, token, email });
+    return NextResponse.json({ paid: isPaidTransaction(tx) });
   } catch (err) {
     console.error("[activate]", err);
     return NextResponse.json(
