@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { KeyRound, LayoutDashboard, LogIn, LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
-import { Logo } from "./Logo";
+import { Wordmark } from "./Wordmark";
 import { useUIStore } from "@/lib/store/ui-store";
 import { useAuth } from "@/components/providers/auth-provider";
 
@@ -24,11 +24,8 @@ export function Header({ showApiKey = true }: { showApiKey?: boolean }) {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="container flex h-14 sm:h-16 items-center justify-between gap-3">
-        <Link href="/" className="flex items-center gap-2 group">
-          <Logo className="size-7" />
-          <span className="font-display font-bold text-base sm:text-lg tracking-tight">
-            Banana<span className="text-banana">Carousel</span>
-          </span>
+        <Link href="/" className="flex items-center group" aria-label="Banana Carousel">
+          <Wordmark priority className="h-7 sm:h-8" />
         </Link>
 
         <nav className="flex items-center gap-1">
