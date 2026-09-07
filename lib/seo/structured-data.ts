@@ -4,6 +4,12 @@ import {
   SITE_DESCRIPTION,
   SITE_TITLE,
 } from "./site";
+import { STYLE_PRESETS } from "@/lib/prompts/style-presets";
+
+// Derived so the structured data can never disagree with the picker or the
+// landing copy. Retired presets stay in the array as `hidden` for backward
+// compatibility, so they must be excluded from the advertised count.
+const VISIBLE_PRESET_COUNT = STYLE_PRESETS.filter((p) => !p.hidden).length;
 
 // JSON-LD builders. Kept as plain objects so they can be embedded by the
 // <JsonLd> component on any page (server or client).
@@ -56,14 +62,9 @@ export function softwareApplicationLd() {
       "AI carousel prompt generation",
       "Multi-provider AI (Gemini, OpenRouter, Groq)",
       "Automatic API key rotation & fallback",
-      "8 visual style presets",
+      `${VISIBLE_PRESET_COUNT} curated visual style presets`,
       "Instagram-ready captions",
     ],
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.9",
-      ratingCount: "120",
-    },
   };
 }
 

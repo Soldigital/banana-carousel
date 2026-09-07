@@ -5,12 +5,27 @@ import { Check, Sparkles } from "lucide-react";
 import { BuyButton } from "./BuyButton";
 import { FoundingBanner } from "./FoundingBanner";
 import { USE_PRICING_V2 } from "@/lib/config/flags";
+import { FOUNDING_PRICE, formatIDR } from "@/lib/config/payment";
+import { STYLE_PRESETS } from "@/lib/prompts/style-presets";
+
+// Prices come from lib/config/payment.ts rather than being retyped here, so the
+// card and BuyButton (which already uses formatIDR) can never disagree.
+//
+// NOTE for the owner: three sources currently state different "before" prices —
+// this section struck through Rp199.000, payment.ts sets LIFETIME_PRICE=299000,
+// and FoundingBanner.tsx hardcodes 299000. The displayed figure is intentionally
+// left at 199.000 so a restyle does not silently change advertised pricing.
+// Decide which is correct and collapse all three onto LIFETIME_PRICE.
+const STRIKE_PRICE = 199_000;
+const SAVING = STRIKE_PRICE - FOUNDING_PRICE;
+
+const PRESET_COUNT = STYLE_PRESETS.filter((p) => !p.hidden).length;
 
 const BENEFITS = [
   "Akses generator selamanya (lifetime)",
   "Master prompt Gemini-ready 600-1500 kata",
   "Caption Instagram siap copy-paste",
-  "8 style preset premium + EN/ID",
+  `${PRESET_COUNT} style preset premium + output EN/ID`,
   "Export .txt / .pdf",
   "Pakai API key Gemini gratis Anda sendiri (BYOK)",
 ];
@@ -39,14 +54,14 @@ export function PricingSection() {
       >
         <div className="flex items-end justify-center gap-3">
           <span className="text-xl text-muted-foreground line-through">
-            Rp199.000
+            {formatIDR(STRIKE_PRICE)}
           </span>
           <span className="font-display text-5xl font-bold leading-none">
-            Rp99.000
+            {formatIDR(FOUNDING_PRICE)}
           </span>
         </div>
         <p className="mt-2 text-center text-sm text-banana font-semibold">
-          Hemat Rp100.000 — lifetime, sekali bayar
+          Hemat {formatIDR(SAVING)} — lifetime, sekali bayar
         </p>
 
         {USE_PRICING_V2 && <FoundingBanner />}
