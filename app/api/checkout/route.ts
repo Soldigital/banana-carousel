@@ -2,12 +2,7 @@ import { NextResponse } from "next/server";
 import { createPayment } from "@/lib/ipaymu/client";
 import { signRef } from "@/lib/license/token";
 import { ensureAccountForEmail } from "@/lib/auth/account";
-import {
-  PRICE,
-  PRODUCT_NAME,
-  ANNUAL_PRICE,
-  ANNUAL_PRODUCT_NAME,
-} from "@/lib/config/payment";
+import { PRICE, PRODUCT_NAME } from "@/lib/config/payment";
 import { cookies } from "next/headers";
 import { getFoundingStatus } from "@/lib/data/founding";
 import { validateDiscount } from "@/lib/data/promo";
@@ -71,11 +66,15 @@ export async function POST(req: Request) {
     let price = PRICE;
     let product = PRODUCT_NAME;
     if (USE_PRICING_V2) {
+      // Both plans are founding-aware now, so one status read serves both.
+      // `plan` above is coerced default-deny (anything unrecognised becomes
+      // "lifetime"); keep it that way — now that the plans have different
+      // prices, that line is effectively the price selector.
+      const f = await getFoundingStatus();
       if (plan === "annual") {
-        price = ANNUAL_PRICE;
-        product = ANNUAL_PRODUCT_NAME;
+        price = f.annualPrice;
+        product = f.annualProductName;
       } else {
-        const f = await getFoundingStatus();
         price = f.price;
         product = f.productName;
       }

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { validateDiscount } from "@/lib/data/promo";
 import { getFoundingStatus } from "@/lib/data/founding";
-import { ANNUAL_PRICE } from "@/lib/config/payment";
 import { rateLimit, clientIp } from "@/lib/security/ratelimit";
 
 export const runtime = "nodejs";
@@ -30,8 +29,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, reason: "Masukkan email dulu." });
   }
 
-  const basePrice =
-    plan === "annual" ? ANNUAL_PRICE : (await getFoundingStatus()).price;
+  // Mirrors the branch in /api/checkout so a promo is always discounted off the
+  // same base the buyer is actually charged.
+  const f = await getFoundingStatus();
+  const basePrice = plan === "annual" ? f.annualPrice : f.price;
   const result = await validateDiscount(code, email, basePrice);
   return NextResponse.json({ ...result, basePrice });
 }
