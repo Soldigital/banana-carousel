@@ -16,7 +16,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { track } from "@/lib/analytics/track";
 import { USE_PRICING_V2 } from "@/lib/config/flags";
-import { FOUNDING_PRICE, ANNUAL_PRICE, formatIDR } from "@/lib/config/payment";
+import {
+  FOUNDING_PRICE,
+  ANNUAL_FOUNDING_PRICE,
+  ANNUAL_DAYS,
+  formatIDR,
+} from "@/lib/config/payment";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -39,8 +44,10 @@ export function BuyButton({
   const [name, setName] = React.useState("");
   const [whatsapp, setWhatsapp] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+  // Optimistic first paint at the founding price for both plans; the effect
+  // below corrects it from the server once /api/founding responds.
   const [price, setPrice] = React.useState(
-    plan === "annual" ? ANNUAL_PRICE : FOUNDING_PRICE,
+    plan === "annual" ? ANNUAL_FOUNDING_PRICE : FOUNDING_PRICE,
   );
   const [code, setCode] = React.useState("");
   const [checking, setChecking] = React.useState(false);
@@ -49,13 +56,20 @@ export function BuyButton({
   );
 
   React.useEffect(() => {
-    if (!USE_PRICING_V2 || plan === "annual") return; // annual = fixed price
+    // Annual is founding-aware too now, so it no longer short-circuits here.
+    // This only affects the DISPLAYED figure — the charged amount is always
+    // recomputed server-side in /api/checkout and never sent from here.
+    if (!USE_PRICING_V2) return;
     fetch("/api/founding")
       .then((r) => r.json())
-      .then((d) => typeof d.price === "number" && setPrice(d.price))
+      .then((d) => {
+        const next = plan === "annual" ? d.annualPrice : d.price;
+        if (typeof next === "number") setPrice(next);
+      })
       .catch(() => {});
   }, [plan]);
 
+  const isAnnual = plan === "annual";
   const effectivePrice = discount?.price ?? price;
   const priceLabel = formatIDR(effectivePrice) + (plan === "annual" ? "/tahun" : "");
 
@@ -130,12 +144,26 @@ export function BuyButton({
       <Dialog open={open} onOpenChange={(o) => !busy && setOpen(o)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl">Beli Akses Lifetime</DialogTitle>
+            <DialogTitle className="text-xl">
+              {isAnnual ? "Langganan Pro Annual" : "Beli Akses Lifetime"}
+            </DialogTitle>
             <DialogDescription>
-              Bayar sekali{" "}
-              <span className="font-semibold text-foreground">{priceLabel}</span>
-              , akses selamanya. License key dikirim ke email Anda & langsung
-              aktif setelah bayar.
+              {isAnnual ? (
+                <>
+                  Bayar{" "}
+                  <span className="font-semibold text-foreground">{priceLabel}</span>{" "}
+                  untuk akses {ANNUAL_DAYS} hari. Perpanjangan manual, tanpa
+                  langganan otomatis. License key dikirim ke email Anda &
+                  langsung aktif setelah bayar.
+                </>
+              ) : (
+                <>
+                  Bayar sekali{" "}
+                  <span className="font-semibold text-foreground">{priceLabel}</span>
+                  , akses selamanya. License key dikirim ke email Anda & langsung
+                  aktif setelah bayar.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
 

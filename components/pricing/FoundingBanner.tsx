@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Rocket } from "lucide-react";
-import { formatIDR } from "@/lib/config/payment";
+import { formatIDR, LIFETIME_PRICE } from "@/lib/config/payment";
 
 interface FoundingStatus {
   taken: number;
@@ -59,7 +59,7 @@ export function FoundingBanner() {
             <span className="font-bold text-banana">{s.remaining} slot</span>{" "}
             harga{" "}
             <span className="font-bold">{formatIDR(s.price)}</span> lifetime —
-            setelah penuh naik jadi {formatIDR(299000)}.
+            setelah penuh naik jadi {formatIDR(LIFETIME_PRICE)}.
           </>
         ) : (
           <>

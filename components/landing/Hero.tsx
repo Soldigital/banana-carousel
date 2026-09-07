@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Sparkles, Zap, ArrowRight } from "lucide-react";
+import { Sparkles, Zap, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Hero() {
@@ -12,7 +12,8 @@ export function Hero() {
       <div className="absolute inset-0 bg-grid opacity-40 pointer-events-none [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
 
       <div className="container relative pt-12 sm:pt-20 pb-12 sm:pb-16">
-        <div className="max-w-3xl mx-auto text-center space-y-5 sm:space-y-7">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+        <div className="text-center lg:text-left space-y-5 sm:space-y-7">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -36,7 +37,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed text-balance"
+            className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed text-balance"
           >
             Banana Carousel mengubah ide sederhana menjadi prompt ultra-detail siap copy-paste ke Gemini AI — lengkap dengan hook, storyline, visual direction, typography, dan CTA yang konsisten antar slide.
           </motion.p>
@@ -45,7 +46,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
-            className="flex flex-col sm:flex-row gap-3 justify-center items-center pt-2"
+            className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start items-center pt-2"
           >
             <Button asChild size="xl" className="w-full sm:w-auto">
               <Link href="/generate">
@@ -55,21 +56,50 @@ export function Hero() {
               </Link>
             </Button>
             <p className="text-xs text-muted-foreground">
-              Cukup 30 detik · Tidak perlu daftar
+              Sekali bayar · Pakai API key sendiri
             </p>
           </motion.div>
+
+          <TrustIndicators />
         </div>
 
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.25 }}
-          className="mt-12 sm:mt-16 max-w-4xl mx-auto"
+          className="lg:pl-4"
         >
           <CarouselMockup />
         </motion.div>
+        </div>
       </div>
     </section>
+  );
+}
+
+function TrustIndicators() {
+  // Every item here must be literally true. "Tanpa langganan" is accurate
+  // (one-time payment + your own provider key); "tidak perlu daftar" is NOT,
+  // because /generate requires login and an active entitlement.
+  const items = [
+    "BYOK — tanpa langganan token",
+    "Hasil dalam ~30 detik",
+    "Key tersimpan terenkripsi",
+  ];
+  return (
+    <motion.ul
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5, delay: 0.2 }}
+      className="flex flex-wrap gap-x-5 gap-y-2 justify-center lg:justify-start text-xs text-muted-foreground pt-1"
+    >
+      {items.map((t) => (
+        <li key={t} className="flex items-center gap-1.5">
+          <Check className="size-3.5 text-banana shrink-0" />
+          {t}
+        </li>
+      ))}
+    </motion.ul>
   );
 }
 
@@ -107,11 +137,11 @@ function CarouselMockup() {
 
   return (
     <div className="relative">
-      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {slides.map((s, i) => (
           <div
             key={i}
-            className={`shrink-0 snap-center w-[78%] sm:w-[44%] md:w-[28%] aspect-[4/5] rounded-2xl overflow-hidden bg-gradient-to-br ${s.bg} ${s.text} shadow-2xl border border-white/10 relative`}
+            className={`shrink-0 snap-center w-[70%] sm:w-[46%] aspect-[4/5] rounded-2xl overflow-hidden bg-gradient-to-br ${s.bg} ${s.text} shadow-2xl border border-white/10 relative`}
           >
             <div className="absolute inset-0 bg-grid opacity-10" />
             <div className="relative h-full flex flex-col justify-between p-4 sm:p-5">

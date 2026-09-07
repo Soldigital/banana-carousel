@@ -72,7 +72,7 @@ export function ExampleGallery() {
   if (CHICHI_EXAMPLES.length === 0 && OTHER_EXAMPLES.length === 0) return null;
 
   return (
-    <section className="container py-16 sm:py-20">
+    <section id="hasil" className="container py-16 sm:py-20 scroll-mt-20">
       <div className="text-center max-w-2xl mx-auto space-y-2 mb-10">
         <p className="text-xs font-bold tracking-[0.2em] text-banana">
           CONTOH HASIL

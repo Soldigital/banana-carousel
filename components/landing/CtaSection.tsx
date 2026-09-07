@@ -20,15 +20,16 @@ export function CtaSection() {
         <div className="relative max-w-2xl mx-auto space-y-5">
           <div className="inline-flex items-center gap-2 text-xs font-bold tracking-[0.2em] text-banana">
             <Sparkles className="size-3.5" />
-            PREMIUM · BYOK · NO SIGN-UP
+            PREMIUM · BYOK · SEKALI BAYAR
           </div>
           <h2 className="font-display font-black text-3xl sm:text-4xl md:text-5xl leading-tight tracking-tight text-balance">
             Carousel viral berikutnya tinggal{" "}
             <span className="gradient-banana-text">satu generate lagi.</span>
           </h2>
           <p className="text-base text-muted-foreground max-w-xl mx-auto">
-            Cukup tempelkan API key Gemini gratis Anda — semua data tetap di
-            browser Anda. Tidak ada server kami yang menyimpan apapun.
+            Pakai API key Gemini gratis milik Anda sendiri — jadi tidak ada
+            langganan token bulanan. Key disimpan terenkripsi dan bisa dihapus
+            kapan saja dari dashboard.
           </p>
           <Button asChild size="xl" className="mt-2">
             <Link href="/generate">

@@ -6,6 +6,10 @@ import {
   LIFETIME_PRICE,
   FOUNDING_PRODUCT_NAME,
   PRODUCT_NAME,
+  ANNUAL_PRICE,
+  ANNUAL_FOUNDING_PRICE,
+  ANNUAL_PRODUCT_NAME,
+  ANNUAL_FOUNDING_PRODUCT_NAME,
 } from "@/lib/config/payment";
 
 export interface FoundingStatus {
@@ -13,8 +17,16 @@ export interface FoundingStatus {
   cap: number;
   remaining: number;
   founding: boolean; // true while founding slots remain
+  /** Lifetime price — founding price while slots remain, else full price. */
   price: number;
   productName: string;
+  /**
+   * Annual price. Also discounted during the founding window, but buying it
+   * does NOT consume a founding slot (setProfilePro never assigns a tier for
+   * annual), so `taken`/`remaining` are unaffected by annual sales.
+   */
+  annualPrice: number;
+  annualProductName: string;
 }
 
 // Live Founding-Member status (service-role count of assigned founder_numbers).
@@ -41,5 +53,9 @@ export async function getFoundingStatus(): Promise<FoundingStatus> {
     founding,
     price: founding ? FOUNDING_PRICE : LIFETIME_PRICE,
     productName: founding ? FOUNDING_PRODUCT_NAME : PRODUCT_NAME,
+    annualPrice: founding ? ANNUAL_FOUNDING_PRICE : ANNUAL_PRICE,
+    annualProductName: founding
+      ? ANNUAL_FOUNDING_PRODUCT_NAME
+      : ANNUAL_PRODUCT_NAME,
   };
 }

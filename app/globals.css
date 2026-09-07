@@ -72,11 +72,22 @@
     background-clip: text;
     color: transparent;
   }
+  /* Hero glow. The 8% yellow was tuned to bloom out of near-black; on a light
+     background it reads as a barely-visible cream smudge, so the light theme
+     gets a denser stop. Scoped like .bg-grid below, via the `light` class
+     next-themes writes on <html>. */
   .gradient-dark-radial {
     background: radial-gradient(
       ellipse at top,
       rgba(250, 204, 21, 0.08) 0%,
       transparent 60%
+    );
+  }
+  .light .gradient-dark-radial {
+    background: radial-gradient(
+      ellipse at top,
+      rgba(250, 204, 21, 0.22) 0%,
+      transparent 65%
     );
   }
   .bg-grid {
