@@ -10,11 +10,24 @@ import { ActivateKeyForm } from "./ActivateKeyForm";
 import { getLicense, clearLicense } from "@/lib/license/storage";
 import { useLicenseStore, verifyLicenseToken } from "@/lib/store/license-store";
 import { useAuth } from "@/components/providers/auth-provider";
+import { USE_PRICING_V2 } from "@/lib/config/flags";
+import {
+  FOUNDING_PRICE,
+  LIFETIME_PRICE,
+  formatIDR,
+} from "@/lib/config/payment";
+import { STYLE_PRESETS } from "@/lib/prompts/style-presets";
+
+// Derived, never retyped — this block previously hardcoded "Rp199.000 /
+// Rp99.000" and "8 style preset" and drifted from lib/config/payment.ts, so the
+// card advertised one price while the BuyButton directly below it quoted
+// another. Same source of truth as PricingSection.
+const PRESET_COUNT = STYLE_PRESETS.filter((p) => !p.hidden).length;
 
 const LOCKED_BENEFITS = [
   "Master prompt Gemini-ready 600-1500 kata",
   "Caption Instagram siap copy-paste",
-  "8 style preset premium + EN/ID + export",
+  `${PRESET_COUNT} style preset premium + EN/ID + export`,
 ];
 
 // Client gate around the generator. Resolution order:
@@ -26,6 +39,17 @@ export function LicenseGate({ children }: { children: React.ReactNode }) {
   const setStatus = useLicenseStore((s) => s.setStatus);
   const unlock = useLicenseStore((s) => s.unlock);
   const { user, loading: authLoading } = useAuth();
+  // Mirrors PricingSection: optimistic founding price, corrected from the
+  // server on mount so a sold-out state never advertises a price nobody can get.
+  const [founding, setFounding] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!USE_PRICING_V2) return;
+    fetch("/api/founding")
+      .then((r) => r.json())
+      .then((d) => typeof d.founding === "boolean" && setFounding(d.founding))
+      .catch(() => {});
+  }, []);
 
   React.useEffect(() => {
     if (authLoading) return; // wait for auth state to settle (stays "checking")
@@ -103,11 +127,13 @@ export function LicenseGate({ children }: { children: React.ReactNode }) {
         </ul>
 
         <div className="mt-6 flex items-end justify-center gap-2">
-          <span className="text-base text-muted-foreground line-through">
-            Rp199.000
-          </span>
+          {founding && (
+            <span className="text-base text-muted-foreground line-through">
+              {formatIDR(LIFETIME_PRICE)}
+            </span>
+          )}
           <span className="font-display text-3xl font-bold leading-none">
-            Rp99.000
+            {formatIDR(founding ? FOUNDING_PRICE : LIFETIME_PRICE)}
           </span>
         </div>
 
