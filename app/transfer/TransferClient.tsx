@@ -18,6 +18,7 @@ export function TransferClient() {
   const [email, setEmail] = React.useState("");
   const [whatsapp, setWhatsapp] = React.useState("");
   const [file, setFile] = React.useState<File | null>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
   const [busy, setBusy] = React.useState(false);
 
   function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -166,21 +167,31 @@ export function TransferClient() {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="t-proof">Bukti Transfer (screenshot)</Label>
-          <label
-            htmlFor="t-proof"
-            className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border bg-background px-3 py-3 text-sm text-muted-foreground hover:border-banana/50"
+          <Label id="t-proof-label">Bukti Transfer (screenshot)</Label>
+          {/* A real <button> drives the picker. The previous markup paired a
+              <label htmlFor> with an input hidden via `display:none`, which
+              removes it from the tab order — and labels are not focusable — so
+              there was NO keyboard path to attach the proof, while submit
+              requires it. Same pattern as BrandProfilesPanel's logo upload. */}
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            aria-labelledby="t-proof-label"
+            className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border bg-background px-3 py-3 text-left text-sm text-muted-foreground transition-colors hover:border-banana/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <Upload className="size-4 shrink-0" />
             <span className="truncate">
               {file ? file.name : "Pilih gambar bukti transfer (maks. 5MB)"}
             </span>
-          </label>
+          </button>
+          {/* sr-only, not `hidden`: keeps it out of sight but still a real,
+              focusable form control for assistive tech and autofill. */}
           <input
+            ref={fileRef}
             id="t-proof"
             type="file"
             accept="image/*"
-            className="hidden"
+            className="sr-only"
             onChange={onPickFile}
           />
         </div>
